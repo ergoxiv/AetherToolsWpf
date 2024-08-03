@@ -48,7 +48,7 @@
 				AcceptsReturn="False"
 				KeyDown="OnSearchBoxKeyDown"
 				Style="{DynamicResource MaterialDesignTextBox}"
-				TextChanged="OnSearchChanged" />
+				TextChanged="OnTextChanged" />
 
 		</Grid>
 
