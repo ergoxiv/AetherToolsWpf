@@ -6,6 +6,7 @@ namespace XivToolsWpf.Selectors;
 using PropertyChanged;
 using Serilog;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -438,6 +439,23 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 		await Application.Current.Dispatcher.InvokeAsync(() =>
 		{
 			this.filteredItemsViewSource.View.Refresh();
+
+			// Clear existing sort descriptions
+			this.filteredItemsViewSource.SortDescriptions.Clear();
+
+			// Update the sort descriptions
+			if (this.Sort != null)
+			{
+				try
+				{
+					ListCollectionView lcv = (ListCollectionView)this.filteredItemsViewSource.View;
+					lcv.CustomSort = new CompareWrapper(new Compare(this.Sort));
+				}
+				catch (InvalidCastException ex)
+				{
+					Log.Error(ex, "Failed to cast filtered items view to ListCollectionView");
+				}
+			}
 		});
 
 		this.idle = true;
@@ -490,6 +508,24 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 			return;
 
 		this.SelectionChanged?.Invoke(true);
+	}
+
+	/// <summary>
+	/// Wrapper for the <see cref="IComparer"/> interface.
+	/// </summary>
+	private class CompareWrapper : IComparer
+	{
+		private readonly IComparer<object> comparer;
+
+		public CompareWrapper(IComparer<object> comparer)
+		{
+			this.comparer = comparer;
+		}
+
+		public int Compare(object? x, object? y)
+		{
+			return this.comparer.Compare(x, y);
+		}
 	}
 
 	/// <summary>
