@@ -62,6 +62,12 @@
 				 SelectionChanged="OnSelectionChanged"
 				 VirtualizingStackPanel.IsVirtualizing="True"
 				 VirtualizingStackPanel.VirtualizationMode="Recycling">
+			<ListBox.ItemContainerStyle>
+				<Style TargetType="ListBoxItem">
+					<Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+					<Setter Property="VerticalContentAlignment" Value="Top"/>
+				</Style>
+			</ListBox.ItemContainerStyle>
 		</ListBox>
 
 		<ProgressBar

@@ -294,13 +294,15 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 			{
 				await Dispatch.NonUiThread();
 				await this.LoadItems.Invoke();
-
 				await this.FilterItemsAsync();
-
 				await Dispatch.MainThread();
+
 				this.ProgressBar.Visibility = Visibility.Collapsed;
 
-				this.ListBox.ScrollIntoView(this.Value);
+				if (this.Value != null)
+				{
+					this.ListBox.ScrollIntoView(this.Value);
+				}
 			});
 		}
 		else
@@ -438,24 +440,21 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 
 		await Application.Current.Dispatcher.InvokeAsync(() =>
 		{
-			this.filteredItemsViewSource.View.Refresh();
-
-			// Clear existing sort descriptions
-			this.filteredItemsViewSource.SortDescriptions.Clear();
-
 			// Update the sort descriptions
 			if (this.Sort != null)
 			{
 				try
 				{
 					ListCollectionView lcv = (ListCollectionView)this.filteredItemsViewSource.View;
-					lcv.CustomSort = new CompareWrapper(new Compare(this.Sort));
+					lcv.CustomSort = new ItemComparer(this.Sort);
 				}
 				catch (InvalidCastException ex)
 				{
 					Log.Error(ex, "Failed to cast filtered items view to ListCollectionView");
 				}
 			}
+
+			this.filteredItemsViewSource.View.Refresh();
 		});
 
 		this.idle = true;
@@ -511,35 +510,17 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 	}
 
 	/// <summary>
-	/// Wrapper for the <see cref="IComparer"/> interface.
-	/// </summary>
-	private class CompareWrapper : IComparer
-	{
-		private readonly IComparer<object> comparer;
-
-		public CompareWrapper(IComparer<object> comparer)
-		{
-			this.comparer = comparer;
-		}
-
-		public int Compare(object? x, object? y)
-		{
-			return this.comparer.Compare(x, y);
-		}
-	}
-
-	/// <summary>
 	/// Comparison logic for comparing objects stored in the selector.
 	/// </summary>
-	private class Compare : IComparer<object>
+	private class ItemComparer : IComparer
 	{
 		private readonly SortEvent sortDelegate;
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="Compare"/> class.
+		/// Initializes a new instance of the <see cref="ItemComparer"/> class.
 		/// </summary>
 		/// <param name="sortDelegate">The sort delegate.</param>
-		public Compare(SortEvent sortDelegate)
+		public ItemComparer(SortEvent sortDelegate)
 		{
 			this.sortDelegate = sortDelegate ?? throw new ArgumentNullException(nameof(sortDelegate));
 		}
@@ -550,7 +531,7 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 		/// <param name="x">The first object to compare.</param>
 		/// <param name="y">The second object to compare.</param>
 		/// <returns>An integer that indicates the relative order of the objects being compared.</returns>
-		int IComparer<object>.Compare(object? x, object? y)
+		public int Compare(object? x, object? y)
 		{
 			if (x == null || y == null)
 				return 0;

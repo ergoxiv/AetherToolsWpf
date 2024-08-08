@@ -99,7 +99,7 @@
 							   PopupAnimation="Slide"
 							   Placement="Bottom"
 							   VerticalOffset="0"
-								CacheMode="{Binding RelativeSource={RelativeSource Self}, Path=(wpf:ShadowAssist.CacheMode)}">
+							   CacheMode="{Binding RelativeSource={RelativeSource Self}, Path=(wpf:ShadowAssist.CacheMode)}">
 							<Border x:Name="SubMenuBorder"
 									Background="{DynamicResource MaterialDesignPaper}"
 									Effect="{DynamicResource MaterialDesignShadowDepth1}"
