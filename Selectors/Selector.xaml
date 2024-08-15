@@ -11,6 +11,13 @@
 	Unloaded="OnUnloaded"
 	mc:Ignorable="d">
 
+	<UserControl.Resources>
+		<Style x:Key="DefaultListBoxItemStyle" TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+			<Setter Property="HorizontalContentAlignment" Value="Left"/>
+			<Setter Property="VerticalContentAlignment" Value="Top"/>
+		</Style>
+	</UserControl.Resources>
+
 	<Grid x:Name="ContentArea">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
@@ -61,7 +68,8 @@
 				 SelectedItem="{Binding Value}"
 				 SelectionChanged="OnSelectionChanged"
 				 VirtualizingStackPanel.IsVirtualizing="True"
-				 VirtualizingStackPanel.VirtualizationMode="Recycling">
+				 VirtualizingStackPanel.VirtualizationMode="Recycling"
+				 ItemContainerStyle="{Binding ListBoxItemStyle, FallbackValue={StaticResource DefaultListBoxItemStyle}}">
 		</ListBox>
 
 		<ProgressBar
