@@ -3,6 +3,8 @@
 
 namespace XivToolsWpf.Selectors;
 
+using PropertyChanged;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -14,8 +16,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using PropertyChanged;
-using Serilog;
 using XivToolsWpf;
 
 /// <summary>
@@ -26,6 +26,7 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 {
 	public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(nameof(Value), typeof(object), typeof(Selector), new FrameworkPropertyMetadata(new PropertyChangedCallback(OnValueChangedStatic)));
 	public static readonly DependencyProperty ItemTemplateProperty = DependencyProperty.Register(nameof(ItemTemplate), typeof(DataTemplate), typeof(Selector), new FrameworkPropertyMetadata(new PropertyChangedCallback(OnValueChangedStatic)));
+	public static readonly DependencyProperty ListBoxItemStyleProperty = DependencyProperty.Register(nameof(ListBoxItemStyle), typeof(Style), typeof(Selector), new FrameworkPropertyMetadata(new PropertyChangedCallback(OnValueChangedStatic)));
 
 	private static readonly Dictionary<Type, string?> SearchInputs = new Dictionary<Type, string?>();
 	private static readonly Dictionary<Type, double> ScrollPositions = new Dictionary<Type, double>();
@@ -86,6 +87,12 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 	{
 		get => (DataTemplate)this.GetValue(ItemTemplateProperty);
 		set => this.SetValue(ItemTemplateProperty, value);
+	}
+
+	public Style ListBoxItemStyle
+	{
+		get => (Style)this.GetValue(ListBoxItemStyleProperty);
+		set => this.SetValue(ListBoxItemStyleProperty, value);
 	}
 
 	public double ScrollPosition
