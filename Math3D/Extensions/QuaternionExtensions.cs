@@ -14,42 +14,6 @@ public static class QuaternionExtensions
 	private static readonly float Rad2Deg = 180f / MathF.PI;
 
 	/// <summary>
-	/// Multiplies a quaternion by a vector, applying the rotation represented by the quaternion to the vector.
-	/// </summary>
-	/// <param name="left">The quaternion representing the rotation.</param>
-	/// <param name="right">The vector to be rotated.</param>
-	/// <returns>A new vector that is the result of applying the quaternion rotation to the input vector.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static Vector3 Multiply(Quaternion left, Vector3 right)
-	{
-		float num = left.X + left.X;
-		float num2 = left.Y + left.Y;
-		float num3 = left.Z + left.Z;
-		float num4 = left.X * num;
-		float num5 = left.Y * num2;
-		float num6 = left.Z * num3;
-		float num7 = left.X * num2;
-		float num8 = left.X * num3;
-		float num9 = left.Y * num3;
-		float num10 = left.W * num;
-		float num11 = left.W * num2;
-		float num12 = left.W * num3;
-		float x = ((1f - (num5 + num6)) * right.X) + ((num7 - num12) * right.Y) + ((num8 + num11) * right.Z);
-		float y = ((num7 + num12) * right.X) + ((1f - (num4 + num6)) * right.Y) + ((num9 - num10) * right.Z);
-		float z = ((num8 - num11) * right.X) + ((num9 + num10) * right.Y) + ((1f - (num4 + num5)) * right.Z);
-		return new Vector3(x, y, z);
-	}
-
-	/// <summary>
-	/// Inverts the quaternion, producing its conjugate.
-	/// </summary>
-	/// <param name="self">The quaternion to be inverted.</param>
-	public static void Invert(this Quaternion self)
-	{
-		self = Quaternion.Inverse(self);
-	}
-
-	/// <summary>
 	/// Converts a string representation of a quaternion to a Quaternion object.
 	/// </summary>
 	/// <param name="str">The string representation of the quaternion, with components separated by ", ".</param>
@@ -67,6 +31,22 @@ public static class QuaternionExtensions
 			float.Parse(parts[1], CultureInfo.InvariantCulture),
 			float.Parse(parts[2], CultureInfo.InvariantCulture),
 			float.Parse(parts[3], CultureInfo.InvariantCulture));
+	}
+
+	/// <summary>
+	/// Converts the quaternion to a string representation with components formatted using invariant culture.
+	/// </summary>
+	/// <param name="quaternion">The quaternion to be converted to a string.</param>
+	/// <returns>
+	/// A string representation of the quaternion with components separated by ", " and formatted using
+	/// invariant culture.
+	/// </returns>
+	public static string ToInvariantString(this Quaternion quaternion)
+	{
+		return quaternion.X.ToString(CultureInfo.InvariantCulture) + ", "
+			+ quaternion.Y.ToString(CultureInfo.InvariantCulture) + ", "
+			+ quaternion.Z.ToString(CultureInfo.InvariantCulture) + ", "
+			+ quaternion.W.ToString(CultureInfo.InvariantCulture);
 	}
 
 	/// <summary>
@@ -202,15 +182,4 @@ public static class QuaternionExtensions
 	/// <returns>True if the absolute difference between the two numbers is less than the error margin; otherwise, false.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static bool IsApproximately(float a, float b, float errorMargin) => MathF.Abs(a - b) < errorMargin;
-
-	/// <summary>
-	/// Returns the maximum value among four floating-point numbers.
-	/// </summary>
-	/// <param name="a">The first floating-point number.</param>
-	/// <param name="b">The second floating-point number.</param>
-	/// <param name="c">The third floating-point number.</param>
-	/// <param name="d">The fourth floating-point number.</param>
-	/// <returns>The maximum value among the four numbers.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static float Max(float a, float b, float c, float d) => MathF.Max(MathF.Max(a, b), MathF.Max(c, d));
 }

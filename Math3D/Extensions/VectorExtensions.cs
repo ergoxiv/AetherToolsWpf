@@ -39,17 +39,6 @@ public static class VectorExtensions
 	}
 
 	/// <summary>
-	/// Multiplies each component of a 3D vector by a scalar value.
-	/// </summary>
-	/// <param name="left">The 3D vector whose components will be multiplied by the scalar value.</param>
-	/// <param name="right">The scalar value by which to multiply each component of the vector.</param>
-	/// <returns>A new Vector3 with each component multiplied by the scalar value.</returns>
-	public static Vector3 Multiply(Vector3 left, float right)
-	{
-		return new Vector3(left.X * right, left.Y * right, left.Z * right);
-	}
-
-	/// <summary>
 	/// Converts a string representation of a 3D vector to a Vector3 object.
 	/// </summary>
 	/// <param name="str">The string representation of the 3D vector, with components separated by ", ".</param>
@@ -66,6 +55,35 @@ public static class VectorExtensions
 		float y = float.Parse(parts[1], CultureInfo.InvariantCulture);
 		float z = float.Parse(parts[2], CultureInfo.InvariantCulture);
 		return new Vector3(x, y, z);
+	}
+
+	/// <summary>
+	/// Converts the 3D vector to a string representation with components formatted using invariant culture.
+	/// </summary>
+	/// <param name="vector">The 3D vector to be converted to a string.</param>
+	/// <returns>
+	/// A string representation of the 3D vector with components separated by ", " and formatted using
+	/// invariant culture.
+	/// </returns>
+	public static string ToInvariantString(this Vector3 vector)
+	{
+		return vector.X.ToString(CultureInfo.InvariantCulture) + ", "
+			+ vector.Y.ToString(CultureInfo.InvariantCulture) + ", "
+			+ vector.Z.ToString(CultureInfo.InvariantCulture);
+	}
+
+	/// <summary>
+	/// Converts the 2D vector to a string representation with components formatted using invariant culture.
+	/// </summary>
+	/// <param name="vector">The 2D vector to be converted to a string.</param>
+	/// <returns>
+	/// A string representation of the 2D vector with components separated by ", " and formatted using
+	/// invariant culture.
+	/// </returns>
+	public static string ToInvariantString(this Vector2 vector)
+	{
+		return vector.X.ToString(CultureInfo.InvariantCulture) + ", "
+			+ vector.Y.ToString(CultureInfo.InvariantCulture);
 	}
 
 	/// <summary>
@@ -107,11 +125,21 @@ public static class VectorExtensions
 		return new Vector3((float)self.X, (float)self.Y, (float)self.Z);
 	}
 
+	/// <summary>
+	/// Converts a System.Numerics Vector3 to a Media3D Point3D.
+	/// </summary>
+	/// <param name="self">The System.Numerics Vector3 to be converted.</param>
+	/// <returns>A new Media3D Point3D with the same components as the System.Numerics Vector3.</returns>
 	public static System.Windows.Media.Media3D.Point3D ToMedia3DPoint(this Vector3 self)
 	{
 		return new System.Windows.Media.Media3D.Point3D(self.X, self.Y, self.Z);
 	}
 
+	/// <summary>
+	/// Converts a Media3D Point3D to a System.Numerics Vector3.
+	/// </summary>
+	/// <param name="self">The Media3D Point3D to be converted.</param>
+	/// <returns>A new System.Numerics Vector3 with the same components as the Media3D Point3D.</returns>
 	public static Vector3 FromMedia3DPoint(this System.Windows.Media.Media3D.Point3D self)
 	{
 		return new Vector3((float)self.X, (float)self.Y, (float)self.Z);
