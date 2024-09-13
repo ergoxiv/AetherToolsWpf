@@ -1,15 +1,15 @@
 ﻿// © XIV-Tools.
 // Licensed under the MIT license.
 
-namespace XivToolsWpf.Meida3D;
+namespace XivToolsWpf.Math3D;
 
 using System;
 using System.Windows.Media.Media3D;
 
 public class Cylinder : ModelVisual3D
 {
+	private readonly GeometryModel3D model;
 	private double radius;
-	private GeometryModel3D model;
 	private int slices = 32;
 	private double length = 1;
 
