@@ -96,7 +96,7 @@ public static class VectorExtensions
 	{
 		string[] parts = str.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
 
-		if (parts.Length != 3)
+		if (parts.Length != 2)
 			throw new FormatException();
 
 		Vector2 v = default;
