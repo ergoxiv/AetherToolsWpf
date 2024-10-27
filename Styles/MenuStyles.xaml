@@ -260,7 +260,7 @@
 
 								<Border Background="Transparent" Margin="3">
 									<ScrollViewer x:Name="SubMenuScrollViewer" Style="{DynamicResource {ComponentResourceKey ResourceId=MenuScrollViewer, TypeInTargetAssembly={x:Type FrameworkElement}}}">
-										<Grid RenderOptions.ClearTypeHint="Enabled" Margin="1, 6">
+										<Grid RenderOptions.ClearTypeHint="Enabled" Margin="0">
 											<Canvas HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Width="0">
 												<Rectangle x:Name="OpaqueRect"
 														   Fill="{Binding Background, ElementName=SubMenuBorder}"
@@ -327,6 +327,24 @@
 		<Setter Property="Margin" Value="0,0,2,0"/>
 		<Setter Property="Popup.HorizontalOffset" Value="0"/>
 		<Setter Property="HorizontalContentAlignment" Value="Left"/>
+	</Style>
+
+	<Style x:Key="AnamMenuItemHeader" TargetType="{x:Type MenuItem}">
+		<Setter Property="Background" Value="{DynamicResource AttentionToActionBrush}"/>
+		<Setter Property="Padding" Value="0"/>
+		<Setter Property="Margin" Value="0"/>
+		<Setter Property="MinWidth" Value="45"/>
+		<Setter Property="BorderThickness" Value="0"/>
+		<Setter Property="HorizontalContentAlignment" Value="Left"/>
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type MenuItem}">
+					<Border Background="{TemplateBinding Background}" CornerRadius="4">
+						<ContentPresenter ContentSource="Header"/>
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
 	</Style>
 
 	<Style x:Key="AnaMenu" TargetType="{x:Type Menu}" BasedOn="{x:Null}">
