@@ -4,6 +4,7 @@
 namespace XivToolsWpf.Math3D;
 
 using System;
+using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
 public class Cylinder : ModelVisual3D
@@ -74,10 +75,21 @@ public class Cylinder : ModelVisual3D
 
 	private MeshGeometry3D CalculateMesh()
 	{
-		MeshGeometry3D mesh = new MeshGeometry3D();
+		MeshGeometry3D mesh = new();
 
-		Vector3D axis = new Vector3D(0, this.length, 0);
-		Point3D endPoint = new Point3D(0, -(this.Length / 2), 0);
+		int totalVertices = ((this.Slices + 1) * 2) + (this.Slices * 2);
+		int totalTriangles = this.Slices * 4 * 3;
+
+		// Pre-allocation to avoid resizing
+		mesh.Positions = new Point3DCollection(totalVertices);
+		mesh.TriangleIndices = new Int32Collection(totalTriangles);
+
+		double radius = this.Radius;
+		double length = this.Length;
+		int slices = this.Slices;
+
+		Vector3D axis = new(0, length, 0);
+		Point3D endPoint = new(0, -(length / 2), 0);
 
 		// Get two vectors perpendicular to the axis.
 		Vector3D v1;
@@ -93,8 +105,8 @@ public class Cylinder : ModelVisual3D
 		Vector3D v2 = Vector3D.CrossProduct(v1, axis);
 
 		// Make the vectors have length radius.
-		v1 *= this.Radius / v1.Length;
-		v2 *= this.Radius / v2.Length;
+		v1 *= radius / v1.Length;
+		v2 *= radius / v2.Length;
 
 		// Make the top end cap.
 		// Make the end point.
@@ -103,8 +115,8 @@ public class Cylinder : ModelVisual3D
 
 		// Make the top points.
 		double theta = 0;
-		double dtheta = 2 * Math.PI / this.Slices;
-		for (int i = 0; i < this.Slices; i++)
+		double dtheta = 2 * Math.PI / slices;
+		for (int i = 0; i < slices; i++)
 		{
 			mesh.Positions.Add(endPoint + (Math.Cos(theta) * v1) + (Math.Sin(theta) * v2));
 			theta += dtheta;
@@ -113,7 +125,7 @@ public class Cylinder : ModelVisual3D
 		// Make the top triangles.
 		int pt1 = mesh.Positions.Count - 1; // Index of last point.
 		int pt2 = pt0 + 1;                  // Index of first point.
-		for (int i = 0; i < this.Slices; i++)
+		for (int i = 0; i < slices; i++)
 		{
 			mesh.TriangleIndices.Add(pt0);
 			mesh.TriangleIndices.Add(pt1);
@@ -129,7 +141,7 @@ public class Cylinder : ModelVisual3D
 
 		// Make the bottom points.
 		theta = 0;
-		for (int i = 0; i < this.Slices; i++)
+		for (int i = 0; i < slices; i++)
 		{
 			mesh.Positions.Add(end_point2 + (Math.Cos(theta) * v1) + (Math.Sin(theta) * v2));
 			theta += dtheta;
@@ -139,9 +151,9 @@ public class Cylinder : ModelVisual3D
 		theta = 0;
 		pt1 = mesh.Positions.Count - 1; // Index of last point.
 		pt2 = pt0 + 1;                  // Index of first point.
-		for (int i = 0; i < this.Slices; i++)
+		for (int i = 0; i < slices; i++)
 		{
-			mesh.TriangleIndices.Add(this.Slices + 1);    // end_point2
+			mesh.TriangleIndices.Add(slices + 1);    // end_point2
 			mesh.TriangleIndices.Add(pt2);
 			mesh.TriangleIndices.Add(pt1);
 			pt1 = pt2++;
@@ -151,7 +163,7 @@ public class Cylinder : ModelVisual3D
 		// Add the points to the mesh.
 		int first_side_point = mesh.Positions.Count;
 		theta = 0;
-		for (int i = 0; i < this.Slices; i++)
+		for (int i = 0; i < slices; i++)
 		{
 			Point3D p1 = endPoint + (Math.Cos(theta) * v1) + (Math.Sin(theta) * v2);
 			mesh.Positions.Add(p1);
@@ -165,7 +177,7 @@ public class Cylinder : ModelVisual3D
 		pt2 = pt1 + 1;
 		int pt3 = first_side_point;
 		int pt4 = pt3 + 1;
-		for (int i = 0; i < this.Slices; i++)
+		for (int i = 0; i < slices; i++)
 		{
 			mesh.TriangleIndices.Add(pt1);
 			mesh.TriangleIndices.Add(pt2);

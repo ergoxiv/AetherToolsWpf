@@ -5,6 +5,7 @@ namespace XivToolsWpf.Math3D;
 
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
 public class Sphere : ModelVisual3D
@@ -76,33 +77,48 @@ public class Sphere : ModelVisual3D
 
 	private MeshGeometry3D CalculateMesh()
 	{
-		MeshGeometry3D mesh = new MeshGeometry3D();
+		MeshGeometry3D mesh = new();
 
-		for (int stack = 0; stack <= this.Stacks; stack++)
+		int slices = this.Slices;
+		int stacks = this.Stacks;
+
+		int totalVertices = (stacks + 1) * (slices + 1);
+		int totalTriangles = stacks * slices * 6;
+
+		// Pre-allocation to avoid resizing
+		mesh.Positions = new Point3DCollection(totalVertices);
+		mesh.Normals = new Vector3DCollection(totalVertices);
+		mesh.TextureCoordinates = new PointCollection(totalVertices);
+		mesh.TriangleIndices = new Int32Collection(totalTriangles);
+
+		double radius = this.Radius;
+		Point3D center = this.center;
+
+		for (int stack = 0; stack <= stacks; stack++)
 		{
-			double phi = (Math.PI / 2) - (stack * Math.PI / this.Stacks);
-			double y = this.Radius * Math.Sin(phi);
-			double scale = -this.Radius * Math.Cos(phi);
+			double phi = (Math.PI / 2) - (stack * Math.PI / stacks);
+			double y = radius * Math.Sin(phi);
+			double scale = -radius * Math.Cos(phi);
 
-			for (int slice = 0; slice <= this.Slices; slice++)
+			for (int slice = 0; slice <= slices; slice++)
 			{
-				double theta = slice * 2 * Math.PI / this.Slices;
+				double theta = slice * 2 * Math.PI / slices;
 				double x = scale * Math.Sin(theta);
 				double z = scale * Math.Cos(theta);
 
-				Vector3D normal = new Vector3D(x, y, z);
+				Vector3D normal = new(x, y, z);
 				mesh.Normals.Add(normal);
-				mesh.Positions.Add(this.center + normal);
-				mesh.TextureCoordinates.Add(new Point((double)slice / this.Slices, (double)stack / this.Stacks));
+				mesh.Positions.Add(center + normal);
+				mesh.TextureCoordinates.Add(new Point((double)slice / slices, (double)stack / stacks));
 			}
 		}
 
-		for (int stack = 0; stack <= this.Stacks; stack++)
+		for (int stack = 0; stack < stacks; stack++)
 		{
-			int top = (stack + 0) * (this.Slices + 1);
-			int bot = (stack + 1) * (this.Slices + 1);
+			int top = stack * (slices + 1);
+			int bot = (stack + 1) * (slices + 1);
 
-			for (int slice = 0; slice < this.Slices; slice++)
+			for (int slice = 0; slice < slices; slice++)
 			{
 				if (stack != 0)
 				{
@@ -111,7 +127,7 @@ public class Sphere : ModelVisual3D
 					mesh.TriangleIndices.Add(top + slice + 1);
 				}
 
-				if (stack != this.Stacks - 1)
+				if (stack != stacks - 1)
 				{
 					mesh.TriangleIndices.Add(top + slice + 1);
 					mesh.TriangleIndices.Add(bot + slice);
