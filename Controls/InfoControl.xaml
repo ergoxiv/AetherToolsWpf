@@ -51,6 +51,7 @@
 				VerticalAlignment="Center"
 				Foreground="{DynamicResource MaterialDesignBody}"
 				Grid.Column="1"
+				Margin="0, 4, 4, 4"
 				TextAlignment="Left"
 				TextWrapping="Wrap" />
 		</Grid>
