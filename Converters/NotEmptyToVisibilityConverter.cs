@@ -9,13 +9,18 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-[ValueConversion(typeof(IEnumerable), typeof(Visibility))]
+[ValueConversion(typeof(object), typeof(Visibility))]
 public class NotEmptyToVisibilityConverter : IValueConverter
 {
 	public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
 	{
 		if (value == null)
 			return Visibility.Collapsed;
+
+		if (value is string str)
+		{
+			return string.IsNullOrEmpty(str) ? Visibility.Collapsed : Visibility.Visible;
+		}
 
 		if (value is IEnumerable enumerable)
 		{
