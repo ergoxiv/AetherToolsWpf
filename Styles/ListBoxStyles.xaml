@@ -19,7 +19,22 @@
 		<Setter Property="VerticalContentAlignment" Value="Center"/>
 		<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Hidden"/>
 		<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Hidden"/>
-		<Setter Property="md:RippleAssist.Feedback" Value="{DynamicResource MaterialDesignBody}" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="ListBox">
+					<Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+						<ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+							<ItemsPresenter/>
+						</ScrollViewer>
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsEnabled" Value="False">
+							<Setter TargetName="Border" Property="Background" Value="Transparent"/>
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
 		<Setter Property="ItemContainerStyle">
 			<Setter.Value>
 				<Style TargetType="ListBoxItem">
@@ -29,7 +44,6 @@
 					<Setter Property="BorderThickness" Value="1"/>
 					<Setter Property="HorizontalContentAlignment" Value="Left"/>
 					<Setter Property="VerticalContentAlignment" Value="Center"/>
-					<Setter Property="md:RippleAssist.Feedback" Value="{DynamicResource MaterialDesignBody}" />
 					<Setter Property="Margin" Value="1" />
 					<Setter Property="Padding" Value="6, 0, 6, 6"/>
 					<Setter Property="MinWidth" Value="18"/>
@@ -39,27 +53,27 @@
 						<Setter.Value>
 							<ControlTemplate TargetType="ListBoxItem">
 								<Grid TextBlock.Foreground="{DynamicResource MaterialDesignBodyLight}" Cursor="Hand" Background="Transparent">
-									<ContentControl x:Name="Content" 
-										Content="{TemplateBinding Content}" 
-										ContentTemplate="{TemplateBinding ContentTemplate}" 
-										Focusable="False"
-										Margin="6, 0"
-										ContentStringFormat="{TemplateBinding ContentStringFormat}" 
-										Padding="{TemplateBinding Padding}" 
-										SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
-										HorizontalAlignment="Stretch" 
-										VerticalAlignment="Stretch"/>
+									<ContentControl x:Name="Content"
+													Content="{TemplateBinding Content}"
+													ContentTemplate="{TemplateBinding ContentTemplate}"
+													Focusable="False"
+													Margin="6, 0"
+													ContentStringFormat="{TemplateBinding ContentStringFormat}"
+													Padding="{TemplateBinding Padding}"
+													SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
+													HorizontalAlignment="Stretch"
+													VerticalAlignment="Stretch"/>
 									<Border x:Name="HoverBorder" Style="{DynamicResource Panel}" Opacity="0" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" IsHitTestVisible="False"/>
-									<Border x:Name="SelectedBorder" 
-									Opacity="0" 
-									BorderBrush="{TemplateBinding Background}" 
-									BorderThickness="0" 
-									Background="{TemplateBinding BorderBrush}" 
-									SnapsToDevicePixels="True" 
-									CornerRadius="1" 
-									Height="2" 
-									VerticalAlignment="Bottom" 
-									Margin="6, 0, 6, 3"/>
+									<Border x:Name="SelectedBorder"
+											Opacity="0"
+											BorderBrush="{TemplateBinding Background}"
+											BorderThickness="0"
+											Background="{TemplateBinding BorderBrush}"
+											SnapsToDevicePixels="True"
+											CornerRadius="1"
+											Height="2"
+											VerticalAlignment="Bottom"
+											Margin="6, 0, 6, 3"/>
 								</Grid>
 								<ControlTemplate.Triggers>
 									<Trigger Property="IsMouseOver" Value="True">
@@ -86,14 +100,14 @@
 										<Trigger.EnterActions>
 											<BeginStoryboard>
 												<Storyboard>
-													<DoubleAnimation From="1" To="0.5" Duration="00:00:00.1" Storyboard.TargetName="Content" Storyboard.TargetProperty="Opacity"/>
+													<DoubleAnimation From="1" To="0.4" Duration="00:00:00.1" Storyboard.TargetName="Content" Storyboard.TargetProperty="Opacity"/>
 												</Storyboard>
 											</BeginStoryboard>
 										</Trigger.EnterActions>
 										<Trigger.ExitActions>
 											<BeginStoryboard>
 												<Storyboard>
-													<DoubleAnimation From="0.5" To="1" Duration="00:00:00.2" Storyboard.TargetName="Content" Storyboard.TargetProperty="Opacity"/>
+													<DoubleAnimation From="0.4" To="1" Duration="00:00:00.2" Storyboard.TargetName="Content" Storyboard.TargetProperty="Opacity"/>
 												</Storyboard>
 											</BeginStoryboard>
 										</Trigger.ExitActions>
