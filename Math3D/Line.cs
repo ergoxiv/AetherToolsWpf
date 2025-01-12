@@ -4,14 +4,21 @@
 namespace XivToolsWpf.Math3D;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
+/// <summary>Represents a Media3D line.</summary>
 public class Line : ModelVisual3D, IDisposable
 {
+	/// <summary>Identifies the <see cref="Color"/> dependency property.</summary>
 	public static readonly DependencyProperty ColorProperty = DependencyProperty.Register(nameof(Color), typeof(Color), typeof(Line), new PropertyMetadata(Colors.White, OnColorChanged));
+
+	/// <summary>Identifies the <see cref="Thickness"/> dependency property.</summary>
 	public static readonly DependencyProperty ThicknessProperty = DependencyProperty.Register(nameof(Thickness), typeof(double), typeof(Line), new PropertyMetadata(1.0, OnThicknessChanged));
+
+	/// <summary>Identifies the <see cref="Points"/> dependency property.</summary>
 	public static readonly DependencyProperty PointsProperty = DependencyProperty.Register(nameof(Points), typeof(Point3DCollection), typeof(Line), new PropertyMetadata(null, OnPointsChanged));
 
 	private readonly GeometryModel3D model;
@@ -20,11 +27,13 @@ public class Line : ModelVisual3D, IDisposable
 	private Matrix3D visualToScreen;
 	private Matrix3D screenToVisual;
 
+	/// <summary>
+	/// Initializes a new instance of the <see cref="Line"/> class.
+	/// </summary>
 	public Line()
 	{
 		this.mesh = new MeshGeometry3D();
-		this.model = new GeometryModel3D();
-		this.model.Geometry = this.mesh;
+		this.model = new GeometryModel3D { Geometry = this.mesh };
 		this.SetColor(this.Color);
 
 		this.Content = this.model;
@@ -33,24 +42,28 @@ public class Line : ModelVisual3D, IDisposable
 		CompositionTarget.Rendering += this.OnRender;
 	}
 
+	/// <summary>Gets or sets the color of the line.</summary>
 	public Color Color
 	{
-		get { return (Color)this.GetValue(ColorProperty); }
-		set { this.SetValue(ColorProperty, value); }
+		get => (Color)this.GetValue(ColorProperty);
+		set => this.SetValue(ColorProperty, value);
 	}
 
+	/// <summary>Gets or sets the thickness of the line.</summary>
 	public double Thickness
 	{
-		get { return (double)this.GetValue(ThicknessProperty); }
-		set { this.SetValue(ThicknessProperty, value); }
+		get => (double)this.GetValue(ThicknessProperty);
+		set => this.SetValue(ThicknessProperty, value);
 	}
 
+	/// <summary>Gets or sets the collection of points that define the line.</summary>
 	public Point3DCollection Points
 	{
-		get { return (Point3DCollection)this.GetValue(PointsProperty); }
-		set { this.SetValue(PointsProperty, value); }
+		get => (Point3DCollection)this.GetValue(PointsProperty);
+		set => this.SetValue(PointsProperty, value);
 	}
 
+	/// <summary>Releases all resources used by the <see cref="Line"/> class.</summary>
 	public void Dispose()
 	{
 		CompositionTarget.Rendering -= this.OnRender;
@@ -58,8 +71,14 @@ public class Line : ModelVisual3D, IDisposable
 		this.Points.Clear();
 		this.Children.Clear();
 		this.Content = null;
+
+		GC.SuppressFinalize(this);
 	}
 
+	/// <summary>
+	/// Creates a wireframe representation of the specified 3D model.
+	/// </summary>
+	/// <param name="model">The 3D model to create a wireframe for.</param>
 	public void MakeWireframe(Model3D model)
 	{
 		this.Points.Clear();
@@ -69,27 +88,31 @@ public class Line : ModelVisual3D, IDisposable
 			return;
 		}
 
-		Matrix3DStack transform = new Matrix3DStack();
+		var transform = new Matrix3DStack();
 		transform.Push(Matrix3D.Identity);
 
 		this.WireframeHelper(model, transform);
 	}
 
+	/// <summary>
+	/// Finds the nearest point on the line to the specified camera point in 2D space.
+	/// </summary>
+	/// <param name="cameraPoint">The camera point to find the nearest point to.</param>
+	/// <returns>The nearest point on the line, or null if no point is found.</returns>
 	public Point3D? NearestPoint2D(Point3D cameraPoint)
 	{
 		double closest = double.MaxValue;
 		Point3D? closestPoint = null;
 
-		Matrix3D matrix;
-		if (!MathUtils.ToViewportTransform(this, out matrix))
+		if (!MathUtils.ToViewportTransform(this, out Matrix3D matrix))
 			return null;
 
-		MatrixTransform3D transform = new MatrixTransform3D(matrix);
+		var transform = new MatrixTransform3D(matrix);
 
 		foreach (Point3D point in this.Points)
 		{
 			Point3D cameraSpacePoint = transform.Transform(point);
-			cameraSpacePoint.Z = cameraSpacePoint.Z * 100;
+			cameraSpacePoint.Z *= 100;
 
 			Vector3D dir = cameraPoint - cameraSpacePoint;
 			if (dir.Length < closest)
@@ -102,24 +125,43 @@ public class Line : ModelVisual3D, IDisposable
 		return closestPoint;
 	}
 
+	/// <summary>
+	/// Handles changes to the <see cref="Color"/> property.
+	/// </summary>
+	/// <param name="sender">The object that raised the event.</param>
+	/// <param name="args">The event data.</param>
 	private static void OnColorChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
 	{
 		((Line)sender).SetColor((Color)args.NewValue);
 	}
 
+	/// <summary>
+	/// Handles changes to the <see cref="Thickness"/> property.
+	/// </summary>
+	/// <param name="sender">The object that raised the event.</param>
+	/// <param name="args">The event data.</param>
 	private static void OnThicknessChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
 	{
 		((Line)sender).GeometryDirty();
 	}
 
+	/// <summary>
+	/// Handles changes to the <see cref="Points"/> property.
+	/// </summary>
+	/// <param name="sender">The object that raised the event.</param>
+	/// <param name="args">The event data.</param>
 	private static void OnPointsChanged(DependencyObject sender, DependencyPropertyChangedEventArgs args)
 	{
 		((Line)sender).GeometryDirty();
 	}
 
+	/// <summary>
+	/// Sets the color of the line.
+	/// </summary>
+	/// <param name="color">The color to set.</param>
 	private void SetColor(Color color)
 	{
-		MaterialGroup unlitMaterial = new MaterialGroup();
+		var unlitMaterial = new MaterialGroup();
 		unlitMaterial.Children.Add(new DiffuseMaterial(new SolidColorBrush(Colors.Black)));
 		unlitMaterial.Children.Add(new EmissiveMaterial(new SolidColorBrush(color)));
 		unlitMaterial.Freeze();
@@ -128,6 +170,11 @@ public class Line : ModelVisual3D, IDisposable
 		this.model.BackMaterial = unlitMaterial;
 	}
 
+	/// <summary>
+	/// Handles the rendering event to update the line geometry.
+	/// </summary>
+	/// <param name="sender">The object that raised the event.</param>
+	/// <param name="e">The event data.</param>
 	private void OnRender(object? sender, EventArgs e)
 	{
 		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0)
@@ -139,18 +186,23 @@ public class Line : ModelVisual3D, IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Marks the geometry as dirty, forcing a rebuild on the next render.
+	/// </summary>
 	private void GeometryDirty()
 	{
 		// Force next call to UpdateTransforms() to return true.
 		this.visualToScreen = MathUtils.ZeroMatrix;
 	}
 
+	/// <summary>Rebuilds the geometry of the line.</summary>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void RebuildGeometry()
 	{
 		double halfThickness = this.Thickness / 2.0;
 		int numLines = this.Points.Count / 2;
 
-		Point3DCollection positions = new Point3DCollection(numLines * 4);
+		var positions = new Point3DCollection(numLines * 4);
 
 		for (int i = 0; i < numLines; i++)
 		{
@@ -165,7 +217,7 @@ public class Line : ModelVisual3D, IDisposable
 		positions.Freeze();
 		this.mesh.Positions = positions;
 
-		Int32Collection indices = new Int32Collection(this.Points.Count * 3);
+		var indices = new Int32Collection(this.Points.Count * 3);
 
 		for (int i = 0; i < this.Points.Count / 2; i++)
 		{
@@ -182,6 +234,12 @@ public class Line : ModelVisual3D, IDisposable
 		this.mesh.TriangleIndices = indices;
 	}
 
+	/// <summary>Adds a segment to the line geometry.</summary>
+	/// <param name="positions">The collection of positions to add to.</param>
+	/// <param name="startPoint">The start point of the segment.</param>
+	/// <param name="endPoint">The end point of the segment.</param>
+	/// <param name="halfThickness">Half the thickness of the line.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void AddSegment(Point3DCollection positions, Point3D startPoint, Point3D endPoint, double halfThickness)
 	{
 		// NOTE: We want the vector below to be perpendicular post projection so
@@ -191,12 +249,10 @@ public class Line : ModelVisual3D, IDisposable
 		lineDirection.Normalize();
 
 		// NOTE: Implicit Rot(90) during construction to get a perpendicular vector.
-		Vector delta = new Vector(-lineDirection.Y, lineDirection.X);
+		var delta = new Vector(-lineDirection.Y, lineDirection.X);
 		delta *= halfThickness;
 
-		Point3D pOut1, pOut2;
-
-		this.Widen(startPoint, delta, out pOut1, out pOut2);
+		this.Widen(startPoint, delta, out Point3D pOut1, out Point3D pOut2);
 
 		positions.Add(pOut1);
 		positions.Add(pOut2);
@@ -207,6 +263,12 @@ public class Line : ModelVisual3D, IDisposable
 		positions.Add(pOut2);
 	}
 
+	/// <summary>Widens a point by a specified delta.</summary>
+	/// <param name="pIn">The input point.</param>
+	/// <param name="delta">The delta to widen by.</param>
+	/// <param name="pOut1">The first widened point.</param>
+	/// <param name="pOut2">The second widened point.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void Widen(Point3D pIn, Vector delta, out Point3D pOut1, out Point3D pOut2)
 	{
 		Point4D pIn4 = (Point4D)pIn;
@@ -223,23 +285,15 @@ public class Line : ModelVisual3D, IDisposable
 		pOut42 *= this.screenToVisual;
 
 		// NOTE: Z is not modified above, so we use the original Z below.
-		pOut1 = new Point3D(
-			pOut41.X / pOut41.W,
-			pOut41.Y / pOut41.W,
-			pOut41.Z / pOut41.W);
-
-		pOut2 = new Point3D(
-			pOut42.X / pOut42.W,
-			pOut42.Y / pOut42.W,
-			pOut42.Z / pOut42.W);
+		pOut1 = new Point3D(pOut41.X / pOut41.W, pOut41.Y / pOut41.W, pOut41.Z / pOut41.W);
+		pOut2 = new Point3D(pOut42.X / pOut42.W, pOut42.Y / pOut42.W, pOut42.Z / pOut42.W);
 	}
 
+	/// <summary>Updates the transforms for the line.</summary>
+	/// <returns>true if the transforms were updated; otherwise, false.</returns>
 	private bool UpdateTransforms()
 	{
-		Viewport3DVisual? viewport;
-		bool success;
-
-		Matrix3D visualToScreen = MathUtils.TryTransformTo2DAncestor(this, out viewport, out success);
+		Matrix3D visualToScreen = MathUtils.TryTransformTo2DAncestor(this, out Viewport3DVisual? viewport, out bool success);
 
 		if (!success || !visualToScreen.HasInverse)
 		{
@@ -258,6 +312,10 @@ public class Line : ModelVisual3D, IDisposable
 		return true;
 	}
 
+	/// <summary>Helper method to create a wireframe representation of a 3D model.</summary>
+	/// <param name="model">The 3D model to create a wireframe for.</param>
+	/// <param name="matrixStack">The matrix stack to use for transformations.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void WireframeHelper(Model3D model, Matrix3DStack matrixStack)
 	{
 		Transform3D transform = model.Transform;
@@ -269,17 +327,13 @@ public class Line : ModelVisual3D, IDisposable
 
 		try
 		{
-			Model3DGroup? group = model as Model3DGroup;
-
-			if (group != null)
+			if (model is Model3DGroup group)
 			{
 				this.WireframeHelper(group, matrixStack);
 				return;
 			}
 
-			GeometryModel3D? geometry = model as GeometryModel3D;
-
-			if (geometry != null)
+			if (model is GeometryModel3D geometry)
 			{
 				this.WireframeHelper(geometry, matrixStack);
 				return;
@@ -294,6 +348,12 @@ public class Line : ModelVisual3D, IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Helper method to create a wireframe representation of a 3D model group.
+	/// </summary>
+	/// <param name="group">The 3D model group to create a wireframe for.</param>
+	/// <param name="matrixStack">The matrix stack to use for transformations.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void WireframeHelper(Model3DGroup group, Matrix3DStack matrixStack)
 	{
 		foreach (Model3D child in group.Children)
@@ -302,12 +362,17 @@ public class Line : ModelVisual3D, IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Helper method to create a wireframe representation of a geometry model.
+	/// </summary>
+	/// <param name="model">The geometry model to create a wireframe for.</param>
+	/// <param name="matrixStack">The matrix stack to use for transformations.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void WireframeHelper(GeometryModel3D model, Matrix3DStack matrixStack)
 	{
 		Geometry3D geometry = model.Geometry;
-		MeshGeometry3D? mesh = geometry as MeshGeometry3D;
 
-		if (mesh != null)
+		if (geometry is MeshGeometry3D mesh)
 		{
 			Point3D[] positions = new Point3D[mesh.Positions.Count];
 			mesh.Positions.CopyTo(positions, 0);
@@ -325,8 +390,7 @@ public class Line : ModelVisual3D, IDisposable
 					int i1 = indices[i - 1];
 					int i2 = indices[i];
 
-					// WPF halts rendering on the first deformed triangle.  We should
-					// do the same.
+					// WPF halts rendering on the first deformed triangle. We should do the same.
 					if ((i0 < 0 || i0 > limit) || (i1 < 0 || i1 > limit) || (i2 < 0 || i2 > limit))
 					{
 						break;
@@ -349,6 +413,14 @@ public class Line : ModelVisual3D, IDisposable
 		}
 	}
 
+	/// <summary>
+	/// Adds a triangle to the line geometry.
+	/// </summary>
+	/// <param name="positions">The array of positions.</param>
+	/// <param name="i0">The first index of the triangle.</param>
+	/// <param name="i1">The second index of the triangle.</param>
+	/// <param name="i2">The third index of the triangle.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void AddTriangle(Point3D[] positions, int i0, int i1, int i2)
 	{
 		this.Points.Add(positions[i0]);

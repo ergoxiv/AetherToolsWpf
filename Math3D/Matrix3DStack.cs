@@ -8,99 +8,115 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Windows.Media.Media3D;
 
-/// <summary>
-///     Matrix3DStack is a stack of Matrix3Ds.
-/// </summary>
-public class Matrix3DStack : IEnumerable<Matrix3D>, ICollection
+/// <summary>A stack of <see cref="Matrix3D"/> objects.</summary>
+public class Matrix3DStack : IEnumerable<Matrix3D>, ICollection, IReadOnlyCollection<Matrix3D>
 {
-	private readonly List<Matrix3D> storage = new List<Matrix3D>();
+	private readonly Stack<Matrix3D> storage = new();
 
-	public int Count
-	{
-		get { return this.storage.Count; }
-	}
+	/// <summary>Gets the number of elements contained in the stack.</summary>
+	public int Count => this.storage.Count;
 
-	bool ICollection.IsSynchronized
-	{
-		get { return ((ICollection)this.storage).IsSynchronized; }
-	}
+	/// <inheritdoc/>
+	bool ICollection.IsSynchronized => ((ICollection)this.storage).IsSynchronized;
 
-	object ICollection.SyncRoot
-	{
-		get { return ((ICollection)this.storage).SyncRoot; }
-	}
+	/// <inheritdoc/>
+	object ICollection.SyncRoot => ((ICollection)this.storage).SyncRoot;
 
-	public Matrix3D Peek()
-	{
-		return this.storage[this.storage.Count - 1];
-	}
+	/// <summary>
+	/// Returns the object at the top of the stack without removing it.
+	/// </summary>
+	/// <returns>The object at the top of the stack.</returns>
+	public Matrix3D Peek() => this.storage.Peek();
 
-	public void Push(Matrix3D item)
-	{
-		this.storage.Add(item);
-	}
+	/// <summary>
+	/// Inserts an object at the top of the stack.
+	/// </summary>
+	/// <param name="item">The object to push onto the stack.</param>
+	public void Push(Matrix3D item) => this.storage.Push(item);
 
+	/// <summary>
+	/// Appends a matrix to the top matrix in the stack.
+	/// </summary>
+	/// <param name="item">The matrix to append.</param>
 	public void Append(Matrix3D item)
 	{
-		if (this.Count > 0)
+		if (this.storage.Count > 0)
 		{
-			Matrix3D top = this.Peek();
+			Matrix3D top = this.storage.Pop();
 			top.Append(item);
-			this.Push(top);
+			this.storage.Push(top);
 		}
 		else
 		{
-			this.Push(item);
+			this.storage.Push(item);
 		}
 	}
 
+	/// <summary>
+	/// Prepends a matrix to the top matrix in the stack.
+	/// </summary>
+	/// <param name="item">The matrix to prepend.</param>
 	public void Prepend(Matrix3D item)
 	{
-		if (this.Count > 0)
+		if (this.storage.Count > 0)
 		{
-			Matrix3D top = this.Peek();
+			Matrix3D top = this.storage.Pop();
 			top.Prepend(item);
-			this.Push(top);
+			this.storage.Push(top);
 		}
 		else
 		{
-			this.Push(item);
+			this.storage.Push(item);
 		}
 	}
 
-	public Matrix3D Pop()
-	{
-		Matrix3D result = this.Peek();
-		this.storage.RemoveAt(this.storage.Count - 1);
+	/// <summary>
+	/// Removes and returns the object at the top of the stack.
+	/// </summary>
+	/// <returns>The object removed from the top of the stack.</returns>
+	public Matrix3D Pop() => this.storage.Pop();
 
-		return result;
-	}
+	/// <summary>
+	/// Removes all objects from the stack.
+	/// </summary>
+	public void Clear() => this.storage.Clear();
 
-	public void Clear()
-	{
-		this.storage.Clear();
-	}
+	/// <summary>
+	/// Determines whether an element is in the stack.
+	/// </summary>
+	/// <param name="item">The object to locate in the stack.</param>
+	/// <returns>true if item is found in the stack; otherwise, false.</returns>
+	public bool Contains(Matrix3D item) => this.storage.Contains(item);
 
-	public bool Contains(Matrix3D item)
-	{
-		return this.storage.Contains(item);
-	}
-
+	/// <inheritdoc/>
 	void ICollection.CopyTo(Array array, int index)
 	{
 		((ICollection)this.storage).CopyTo(array, index);
 	}
 
+	/// <inheritdoc/>
 	IEnumerator IEnumerable.GetEnumerator()
 	{
 		return ((IEnumerable<Matrix3D>)this).GetEnumerator();
 	}
 
+	/// <inheritdoc/>
 	IEnumerator<Matrix3D> IEnumerable<Matrix3D>.GetEnumerator()
 	{
-		for (int i = this.storage.Count - 1; i >= 0; i--)
-		{
-			yield return this.storage[i];
-		}
+		return this.storage.GetEnumerator();
 	}
+
+	/// <summary>
+	/// Attempts to return the object at the top of the stack without removing it.
+	/// </summary>
+	/// <param name="result">The object at the top of the stack, if found.</param>
+	/// <returns>true if an object was found; otherwise, false.</returns>
+	public bool TryPeek(out Matrix3D result) => this.storage.TryPeek(out result);
+
+	/// <summary>
+	/// Attempts to remove and return the object at the top of the stack.
+	/// </summary>
+	/// <param name="result">The object removed from the top of the stack, if found.</param>
+	/// <returns>true if an object was found and removed; otherwise, false.</returns>
+	public bool TryPop(out Matrix3D result) => this.storage.TryPop(out result);
 }
