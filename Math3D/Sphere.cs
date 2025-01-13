@@ -27,6 +27,24 @@ public class Sphere : ModelVisual3D
 	}
 
 	/// <summary>
+	/// Initializes a new instance of the <see cref="Sphere"/> class.
+	/// </summary>
+	/// <param name="other">The sphere to copy from.</param>
+	public Sphere(Sphere other)
+	{
+		this.model = new GeometryModel3D
+		{
+			Geometry = CloneMeshGeometry3D(other.model.Geometry as MeshGeometry3D),
+			Material = other.model.Material,
+		};
+		this.Content = this.model;
+		this.slices = other.slices;
+		this.stacks = other.stacks;
+		this.radius = other.radius;
+		this.center = other.center;
+	}
+
+	/// <summary>
 	/// Gets or sets the number of slices (vertical divisions) of the sphere.
 	/// </summary>
 	public int Slices
@@ -68,6 +86,25 @@ public class Sphere : ModelVisual3D
 	{
 		get => this.model.Material;
 		set => this.model.Material = value;
+	}
+
+	/// <summary>
+	/// Clones a <see cref="MeshGeometry3D"/> instance.
+	/// </summary>
+	/// <param name="mesh">The mesh to clone.</param>
+	/// <returns>A new <see cref="MeshGeometry3D"/> instance with the same data.</returns>
+	private static MeshGeometry3D CloneMeshGeometry3D(MeshGeometry3D? mesh)
+	{
+		if (mesh == null)
+			throw new ArgumentNullException(nameof(mesh));
+
+		return new MeshGeometry3D
+		{
+			Positions = new Point3DCollection(mesh.Positions),
+			Normals = new Vector3DCollection(mesh.Normals),
+			TextureCoordinates = new PointCollection(mesh.TextureCoordinates),
+			TriangleIndices = new Int32Collection(mesh.TriangleIndices),
+		};
 	}
 
 	/// <summary>
