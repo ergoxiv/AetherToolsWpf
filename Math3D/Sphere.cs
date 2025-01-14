@@ -9,13 +9,14 @@ using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
 /// <summary>Represents a Media3D sphere.</summary>
-public class Sphere : ModelVisual3D
+public class Sphere : ModelVisual3D, IDisposable
 {
 	private readonly GeometryModel3D model;
 	private int slices = 32;
 	private int stacks = 16;
 	private double radius = 1;
 	private Point3D center = default;
+	private bool disposed = false;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="Sphere"/> class.
@@ -86,6 +87,38 @@ public class Sphere : ModelVisual3D
 	{
 		get => this.model.Material;
 		set => this.model.Material = value;
+	}
+
+	/// <summary>
+	/// Disposes the resources used by the <see cref="Sphere"/> class.
+	/// </summary>
+	public void Dispose()
+	{
+		this.Dispose(true);
+		GC.SuppressFinalize(this);
+	}
+
+	/// <summary>
+	/// Disposes the resources used by the <see cref="Sphere"/> class.
+	/// </summary>
+	/// <param name="disposing">Indicates whether the method is called from Dispose or the finalizer.</param>
+	protected virtual void Dispose(bool disposing)
+	{
+		if (!this.disposed)
+		{
+			if (disposing)
+			{
+				if (this.model.Geometry is MeshGeometry3D mesh)
+				{
+					mesh.Positions.Clear();
+					mesh.Normals.Clear();
+					mesh.TextureCoordinates.Clear();
+					mesh.TriangleIndices.Clear();
+				}
+			}
+
+			this.disposed = true;
+		}
 	}
 
 	/// <summary>
