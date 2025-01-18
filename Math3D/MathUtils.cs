@@ -102,7 +102,7 @@ public static class MathUtils
 
 		if (visual != null && success)
 		{
-			result.Append(GetProjectionMatrix(visual.Camera, MathUtils.GetAspectRatio(visual.Viewport.Size)));
+			result.Append(GetProjectionMatrix(visual.Camera, GetAspectRatio(visual.Viewport.Size)));
 			result.Append(GetHomogeneousToViewportTransform(visual.Viewport));
 			success = true;
 		}
@@ -172,11 +172,12 @@ public static class MathUtils
 			return ZeroMatrix;
 		}
 
-		to2D.Append(MathUtils.TryWorldToViewportTransform(viewport, out success));
+		Matrix3D toViewport = TryWorldToViewportTransform(viewport, out success);
 
 		if (!success)
 			return ZeroMatrix;
 
+		to2D.Append(toViewport);
 		return to2D;
 	}
 
@@ -193,7 +194,7 @@ public static class MathUtils
 	public static Matrix3D TryTransformToCameraSpace(DependencyObject visual, out Viewport3DVisual? viewport, out bool success)
 	{
 		Matrix3D toViewSpace = GetWorldTransformationMatrix(visual, out viewport);
-		toViewSpace.Append(MathUtils.TryWorldToCameraTransform(viewport, out success));
+		toViewSpace.Append(TryWorldToCameraTransform(viewport, out success));
 
 		if (!success)
 			return ZeroMatrix;
@@ -357,7 +358,7 @@ public static class MathUtils
 		// D3DXMatrixPerspectiveFovRH with the exception that in
 		// WPF the camera's horizontal rather the vertical
 		// field-of-view is specified.
-		double hFoV = MathUtils.DegreesToRadians(camera.FieldOfView);
+		double hFoV = DegreesToRadians(camera.FieldOfView);
 		double zn = camera.NearPlaneDistance;
 		double zf = camera.FarPlaneDistance;
 
@@ -390,6 +391,7 @@ public static class MathUtils
 	/// <param name="visual">The visual whose world space transform should be found.</param>
 	/// <param name="viewport">The Viewport3DVisual the Visual is contained within.</param>
 	/// <returns>The world space transformation.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static Matrix3D GetWorldTransformationMatrix(DependencyObject visual, out Viewport3DVisual? viewport)
 	{
 		Matrix3D worldTransform = Matrix3D.Identity;
@@ -400,10 +402,9 @@ public static class MathUtils
 			throw new ArgumentException("Must be of type Visual3D.", nameof(visual));
 		}
 
-		while (visual is ModelVisual3D)
+		while (visual is ModelVisual3D modelVisual)
 		{
-			Transform3D transform = (Transform3D)visual.GetValue(ModelVisual3D.TransformProperty);
-
+			Transform3D? transform = modelVisual.Transform;
 			if (transform != null)
 			{
 				worldTransform.Append(transform.Value);
@@ -420,7 +421,7 @@ public static class MathUtils
 			{
 				// In WPF 3D v1 the only possible configuration is a chain of
 				// ModelVisual3Ds leading up to a Viewport3DVisual.
-				throw new ApplicationException(string.Format("Unsupported type: '{0}'.  Expected tree of ModelVisual3Ds leading up to a Viewport3DVisual.", visual.GetType().FullName));
+				throw new ApplicationException($"Unsupported type: '{visual.GetType().FullName}'. Expected tree of ModelVisual3Ds leading up to a Viewport3DVisual.");
 			}
 
 			return ZeroMatrix;

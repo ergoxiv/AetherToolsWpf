@@ -200,35 +200,33 @@ public class Line : ModelVisual3D, IDisposable
 	private void RebuildGeometry()
 	{
 		double halfThickness = this.Thickness / 2.0;
-		int numLines = this.Points.Count / 2;
+		var points = this.Points;
+		int numLines = points.Count / 2;
 
 		var positions = new Point3DCollection(numLines * 4);
+		var indices = new Int32Collection(points.Count * 3);
 
 		for (int i = 0; i < numLines; i++)
 		{
 			int startIndex = i * 2;
 
-			Point3D startPoint = this.Points[startIndex];
-			Point3D endPoint = this.Points[startIndex + 1];
+			Point3D startPoint = points[startIndex];
+			Point3D endPoint = points[startIndex + 1];
 
 			this.AddSegment(positions, startPoint, endPoint, halfThickness);
+
+			int baseIndex = i * 4;
+			indices.Add(baseIndex + 2);
+			indices.Add(baseIndex + 1);
+			indices.Add(baseIndex + 0);
+
+			indices.Add(baseIndex + 2);
+			indices.Add(baseIndex + 3);
+			indices.Add(baseIndex + 1);
 		}
 
 		positions.Freeze();
 		this.mesh.Positions = positions;
-
-		var indices = new Int32Collection(this.Points.Count * 3);
-
-		for (int i = 0; i < this.Points.Count / 2; i++)
-		{
-			indices.Add((i * 4) + 2);
-			indices.Add((i * 4) + 1);
-			indices.Add((i * 4) + 0);
-
-			indices.Add((i * 4) + 2);
-			indices.Add((i * 4) + 3);
-			indices.Add((i * 4) + 1);
-		}
 
 		indices.Freeze();
 		this.mesh.TriangleIndices = indices;

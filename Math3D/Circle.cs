@@ -38,14 +38,19 @@ public class Circle : Line
 
 		double angleStep = MathUtils.DegreesToRadians(360.0 / Segments);
 		double angle = 0.0;
+		double cosAngle = Math.Cos(angle);
+		double sinAngle = Math.Sin(angle);
+		double radius = this.Radius;
 
 		for (int i = 0; i < Segments; i++)
 		{
-			double x1 = Math.Cos(angle) * this.Radius;
-			double z1 = Math.Sin(angle) * this.Radius;
+			double x1 = cosAngle * radius;
+			double z1 = sinAngle * radius;
 			angle += angleStep;
-			double x2 = Math.Cos(angle) * this.Radius;
-			double z2 = Math.Sin(angle) * this.Radius;
+			cosAngle = Math.Cos(angle);
+			sinAngle = Math.Sin(angle);
+			double x2 = cosAngle * radius;
+			double z2 = sinAngle * radius;
 
 			this.Points.Add(new Point3D(x1, 0.0, z1));
 			this.Points.Add(new Point3D(x2, 0.0, z2));
