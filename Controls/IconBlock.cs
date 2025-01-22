@@ -3,13 +3,12 @@
 
 namespace XivToolsWpf.Controls;
 
-using System.Windows;
-using System.Windows.Media;
 using FontAwesome.Sharp;
+using System.Windows.Media;
 
 public class IconBlock : IconBlockBase<IconChar>
 {
-	private static readonly Typeface[] Typefaces = typeof(IconHelper).Assembly.LoadTypefaces("fonts", "Font Awesome 5 Free Solid");
+	private static readonly Typeface[] Typefaces = typeof(IconHelper).Assembly.LoadTypefaces("fonts", new[] { "Font Awesome 6 Free Solid" });
 
 	public IconBlock()
 		: base(Font)
