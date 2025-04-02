@@ -3,47 +3,60 @@
 
 namespace XivToolsWpf;
 
-using System.Text.RegularExpressions;
+using System;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 public static class SearchUtility
 {
-	public static bool Matches(string? input, string[]? querry)
+	public static bool Matches(string? input, string[]? query)
 	{
-		if (input == null)
+		if (input is null)
 			return false;
 
-		if (querry == null)
+		if (query is null)
 			return true;
 
-		input = input.ToLower();
-		input = Regex.Replace(input, @"[^\w\d\s]", string.Empty);
+		// Sanitize the input once:
+		string sanitizedInput = Sanitize(input);
 
-		bool matchesSearch = true;
-		foreach (string str in querry)
+		// Check each term
+		foreach (string term in query)
 		{
-			// ignore 'the'
-			if (str == "the")
+			// Ignore "the"
+			if (term.Equals("the", StringComparison.OrdinalIgnoreCase))
 				continue;
 
-			// ignore all symbols
-			string strB = Regex.Replace(str, @"[^\w\d\s]", string.Empty);
+			// Sanitize the term
+			string sanitizedTerm = Sanitize(term);
 
-			// Parse integers as numbers instead of strings
-			if (int.TryParse(str, out int v))
+			// If integers, match against numeric form; otherwise match the string
+			if (int.TryParse(sanitizedTerm, out int integerValue))
 			{
-				matchesSearch &= input.Contains(v.ToString());
+				if (!sanitizedInput.Contains(integerValue.ToString()))
+					return false;
 			}
 			else
 			{
-				matchesSearch &= input.Contains(strB);
+				if (!sanitizedInput.Contains(sanitizedTerm))
+					return false;
 			}
 		}
 
-		if (!matchesSearch)
+		return true;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static string Sanitize(string input)
+	{
+		// Remove any non-(letter/digit/underscore/whitespace) character, and convert to lowercase
+		var sb = new StringBuilder(input.Length);
+		foreach (char c in input)
 		{
-			return false;
+			if (char.IsLetterOrDigit(c) || c == '_' || char.IsWhiteSpace(c))
+				sb.Append(char.ToLowerInvariant(c));
 		}
 
-		return true;
+		return sb.ToString();
 	}
 }
