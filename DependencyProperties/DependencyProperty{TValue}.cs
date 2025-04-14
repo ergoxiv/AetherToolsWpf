@@ -3,29 +3,16 @@
 
 namespace XivToolsWpf.DependencyProperties;
 
+using System.Runtime.CompilerServices;
 using System.Windows;
 
-public class DependencyProperty<TValue> : IBind<TValue>
+public class DependencyProperty<TValue>(DependencyProperty dp) : IBind<TValue>
 {
-	private DependencyProperty dp;
+	private readonly DependencyProperty dp = dp;
 
-	public DependencyProperty(DependencyProperty dp)
-	{
-		this.dp = dp;
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public TValue Get(DependencyObject control) => (TValue)control.GetValue(this.dp);
 
-	public TValue Get(DependencyObject control)
-	{
-		return (TValue)control.GetValue(this.dp);
-	}
-
-	public void Set(DependencyObject control, TValue value)
-	{
-		TValue old = this.Get(control);
-
-		if (old != null && old.Equals(value))
-			return;
-
-		control.SetValue(this.dp, value);
-	}
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public void Set(DependencyObject control, TValue value) => control.SetValue(this.dp, value);
 }
