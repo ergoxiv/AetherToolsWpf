@@ -53,7 +53,7 @@ public static class SearchUtility
 		var sb = new StringBuilder(input.Length);
 		foreach (char c in input)
 		{
-			if (char.IsLetterOrDigit(c) || c == '_' || char.IsWhiteSpace(c))
+			if (char.IsLetterOrDigit(c) || c == '_' || c == '-' || char.IsWhiteSpace(c))
 				sb.Append(char.ToLowerInvariant(c));
 		}
 
