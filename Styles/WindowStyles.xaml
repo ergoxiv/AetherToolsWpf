@@ -6,21 +6,22 @@
 				<ControlTemplate TargetType="{x:Type Window}">
 					<Grid>
 						<Grid>
-
 							<Grid.RowDefinitions>
-								<RowDefinition Height="27"/>
+								<RowDefinition Height="26"/>
 								<RowDefinition/>
 							</Grid.RowDefinitions>
-							
+
 							<Rectangle Grid.Row="0" Fill="Transparent" x:Name="TitleBarArea"/>
 							<Rectangle Grid.Row="1" Fill="{DynamicResource MaterialDesignPaper}" x:Name="BackgroundArea"/>
 						</Grid>
 
 						<ContentPresenter Content="{TemplateBinding Content}"/>
-
 					</Grid>
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>
+		<Setter Property="UseLayoutRounding" Value="True"/>
+		<Setter Property="SnapsToDevicePixels" Value="True"/>
+		<Setter Property="OverridesDefaultStyle" Value="True"/>
 	</Style>
 </ResourceDictionary>

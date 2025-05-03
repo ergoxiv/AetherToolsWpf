@@ -3,13 +3,10 @@
 
 namespace XivToolsWpf;
 
-using System;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Media;
-using MaterialDesignColors;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
+using System.Windows;
+using System.Windows.Media;
 
 public static class Themes
 {
@@ -21,6 +18,8 @@ public static class Themes
 		SystemParameters.StaticPropertyChanged += OnSystemParametersChanged;
 	}
 
+	public static bool IsLightTheme => currentLight;
+
 	public static void ApplyCustomTheme(bool light, Color highlightColor)
 	{
 		if (currentColor == highlightColor && currentLight == light)
@@ -29,8 +28,28 @@ public static class Themes
 		currentColor = highlightColor;
 		currentLight = light;
 
-		Theme theme = new Theme();
-		theme.SetBaseTheme(light ? new LightTheme() : new DarkTheme());
+		var theme = new Theme();
+
+		if (light)
+		{
+			var lightTheme = new LightTheme();
+			theme.SetBaseTheme(lightTheme);
+
+			// Custom theme properties (Extension from material design base theme)
+			Application.Current.Resources["PanelBackground"] = lightTheme.PanelBackground;
+			Application.Current.Resources["PanelBackgroundBrush"] = new SolidColorBrush(lightTheme.PanelBackground);
+
+		}
+		else
+		{
+			var darkTheme = new DarkTheme();
+			theme.SetBaseTheme(darkTheme);
+
+			// Custom theme properties (Extension from material design base theme)
+			Application.Current.Resources["PanelBackground"] = darkTheme.PanelBackground;
+			Application.Current.Resources["PanelBackgroundBrush"] = new SolidColorBrush(darkTheme.PanelBackground);
+		}
+
 		theme.SetPrimaryColor(currentColor);
 		////theme.SetSecondaryColor(currentColor);
 
@@ -84,6 +103,7 @@ public static class Themes
 		public Color MaterialDesignTextAreaBorder { get; } = (Color)ColorConverter.ConvertFromString("#BCFFFFFF");
 		public Color MaterialDesignTextAreaInactiveBorder { get; } = (Color)ColorConverter.ConvertFromString("#29FFFFFF");
 		public Color MaterialDesignDataGridRowHoverBackground { get; } = (Color)ColorConverter.ConvertFromString("#14FFFFFF");
+		public Color PanelBackground { get; } = (Color)ColorConverter.ConvertFromString("#11FFFFFF");
 	}
 
 	public class LightTheme : IBaseTheme
@@ -94,7 +114,7 @@ public static class Themes
 		public Color MaterialDesignCardBackground { get; } = (Color)ColorConverter.ConvertFromString("#FFFFFFFF");
 		public Color MaterialDesignToolBarBackground { get; } = (Color)ColorConverter.ConvertFromString("#FFF5F5F5");
 		public Color MaterialDesignBody { get; } = (Color)ColorConverter.ConvertFromString("#DD000000");
-		public Color MaterialDesignBodyLight { get; } = (Color)ColorConverter.ConvertFromString("#89000000");
+		public Color MaterialDesignBodyLight { get; } = (Color)ColorConverter.ConvertFromString("#DD000000");
 		public Color MaterialDesignColumnHeader { get; } = (Color)ColorConverter.ConvertFromString("#BC000000");
 		public Color MaterialDesignCheckBoxOff { get; } = (Color)ColorConverter.ConvertFromString("#89000000");
 		public Color MaterialDesignCheckBoxDisabled { get; } = (Color)ColorConverter.ConvertFromString("#FFBDBDBD");
@@ -116,5 +136,6 @@ public static class Themes
 		public Color MaterialDesignTextAreaBorder { get; } = (Color)ColorConverter.ConvertFromString("#BC000000");
 		public Color MaterialDesignTextAreaInactiveBorder { get; } = (Color)ColorConverter.ConvertFromString("#29000000");
 		public Color MaterialDesignDataGridRowHoverBackground { get; } = (Color)ColorConverter.ConvertFromString("#0A000000");
+		public Color PanelBackground { get; } = (Color)ColorConverter.ConvertFromString("#55FFFFFF");
 	}
 }
