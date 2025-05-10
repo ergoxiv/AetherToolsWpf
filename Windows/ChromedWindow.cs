@@ -20,6 +20,7 @@ public class ChromedWindow : Window
 	private bool enableTranslucency = true;
 	private bool isDarkTheme = false;
 	private bool extendIntoChrome = true;
+	private bool prevBlurStatus = false;
 
 	public ChromedWindow()
 	{
@@ -168,6 +169,7 @@ public class ChromedWindow : Window
 			accent.AccentState = Win32.AccentState.ACCENT_ENABLE_TRANSPARENTGRADIENT;
 			blurOpacity = (int)Math.Clamp(255 * this.WindowOpacity, 0, 255);
 			blurBackgroundColor = this.isDarkTheme ? 0x303030 : 0xFFFFFF;
+			enableBlurEffect = this.EnableTranslucency && (isWindows10 || isWindows11);
 		}
 		else if (!this.EnableTranslucency || (!isWindows10 && !isWindows11))
 		{
@@ -208,6 +210,10 @@ public class ChromedWindow : Window
 
 		Win32.SetAccentPolicy(windowHelper.Handle, accent);
 
-		Win32.SetBlurBehindWindow(windowHelper.Handle, enableBlurEffect);
+		if (enableBlurEffect != this.prevBlurStatus)
+		{
+			this.prevBlurStatus = enableBlurEffect;
+			Win32.SetBlurBehindWindow(windowHelper.Handle, enableBlurEffect);
+		}
 	}
 }
