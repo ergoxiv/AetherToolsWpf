@@ -7,9 +7,14 @@ namespace XivToolsWpf.Utility;
 
 using System;
 using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
 
 public static partial class Win32
 {
+	private const int WM_NCPAINT = 0x0085;
+	private const int WM_NCACTIVATE = 0x0086;
+
 	public static readonly IntPtr InvisibleRegion = CreateRectRgn(0, 0, -1, -1);
 
 	public enum AccentState
@@ -222,8 +227,18 @@ public static partial class Win32
 		}
 	}
 
+	public static void RedrawNonClientArea(Window window)
+	{
+		var hwnd = new WindowInteropHelper(window).Handle;
+		_ = SendMessage(hwnd, WM_NCPAINT, IntPtr.Zero, IntPtr.Zero);
+		_ = SendMessage(hwnd, WM_NCACTIVATE, window.IsActive ? 1 : 0, IntPtr.Zero);
+	}
+
 	[LibraryImport("user32.dll")]
 	private static partial int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+	[LibraryImport("user32.dll", EntryPoint = "SendMessageA")]
+	private static partial IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
 	[LibraryImport("dwmapi.dll")]
 	private static partial void DwmEnableBlurBehindWindow(IntPtr hwnd, ref DWM_BLURBEHIND blurBehind);

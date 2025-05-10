@@ -109,6 +109,7 @@ public class ChromedWindow : Window
 		this.SetTranslucency();
 
 		// Force a redraw
+		Win32.RedrawNonClientArea(this);
 		this.InvalidateVisual();
 		this.UpdateLayout();
 	}
