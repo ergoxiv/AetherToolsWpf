@@ -50,6 +50,7 @@ public class ChromedWindow : Window
 	}
 
 	public bool TransprentWhenNotInFocus { get; set; }
+	public double WindowOpacity { get; set; }
 
 	public bool ExtendIntoChrome
 	{
@@ -164,7 +165,7 @@ public class ChromedWindow : Window
 		if (this.TransprentWhenNotInFocus && !this.IsActive)
 		{
 			accent.AccentState = Win32.AccentState.ACCENT_ENABLE_TRANSPARENTGRADIENT;
-			blurOpacity = 0;
+			blurOpacity = (int)Math.Clamp(255 * this.WindowOpacity, 0, 255);
 			blurBackgroundColor = this.isDarkTheme ? 0x303030 : 0xFFFFFF;
 		}
 		else if (!this.EnableTranslucency || (!isWindows10 && !isWindows11))
