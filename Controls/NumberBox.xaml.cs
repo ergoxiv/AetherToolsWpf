@@ -3,15 +3,14 @@
 
 namespace XivToolsWpf.Controls;
 
+using PropertyChanged;
 using System;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using PropertyChanged;
 using XivToolsWpf.DependencyProperties;
 using DrawPoint = System.Drawing.Point;
 using WinCur = System.Windows.Forms.Cursor;
@@ -307,6 +306,7 @@ public partial class NumberBox : UserControl, INotifyPropertyChanged
 	{
 		bool v = mode != SliderModes.None;
 
+		sender.InputSlider.IsMoveToPointEnabled = mode == SliderModes.Absolute;
 		sender.SliderArea.Width = v ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
 		sender.InputBoxArea.Width = v ? new GridLength(42) : new GridLength(1, GridUnitType.Star);
 
