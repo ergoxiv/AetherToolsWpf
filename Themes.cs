@@ -12,6 +12,7 @@ public static class Themes
 {
 	private static Color currentColor;
 	private static bool currentLight;
+	private static int? prevThemeRegKey = null;
 
 	static Themes()
 	{
@@ -58,13 +59,17 @@ public static class Themes
 
 	public static void ApplySystemTheme()
 	{
-		int? value = Registry.GetValue("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\\", "AppsUseLightTheme", 0) as int?;
+		int? currentValue = Registry.GetValue("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\\", "AppsUseLightTheme", 0) as int?;
 
-		if (value != null)
+		if (currentValue != prevThemeRegKey)
 		{
-			bool lightMode = value == 1;
+			prevThemeRegKey = currentValue;
 
-			ApplyCustomTheme(lightMode, SystemParameters.WindowGlassColor);
+			if (currentValue != null)
+			{
+				bool lightMode = currentValue == 1;
+				ApplyCustomTheme(lightMode, SystemParameters.WindowGlassColor);
+			}
 		}
 	}
 
