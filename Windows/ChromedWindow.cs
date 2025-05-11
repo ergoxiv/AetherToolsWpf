@@ -197,12 +197,14 @@ public class ChromedWindow : Window
 		else if (isWindows10)
 		{
 			accent.AccentState = Win32.AccentState.ACCENT_ENABLE_BLURBEHIND;
-			blurOpacity = 255;
-			blurBackgroundColor = 0x000000;
-			backgroundRect.Visibility = Visibility.Visible;
-			backgroundRect.Opacity = 0.75;
-			titlebarRect.Fill = Application.Current.FindResource("MaterialDesignPaper") as SolidColorBrush;
-			titlebarRect.Opacity = 0.75;
+			accent.AccentFlags = 2;
+			blurOpacity = this.isDarkTheme ? 210 : 150;
+			blurBackgroundColor = this.isDarkTheme ? 0x202020 : 0xFFFFFF;
+
+			backgroundRect.Visibility = Visibility.Collapsed;
+			titlebarRect.Fill = new SolidColorBrush(Colors.Transparent);
+			titlebarRect.Opacity = 1.0;
+
 			enableBlurEffect = true;
 		}
 
