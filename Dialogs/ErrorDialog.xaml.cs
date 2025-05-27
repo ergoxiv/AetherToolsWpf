@@ -3,17 +3,18 @@
 
 namespace XivToolsWpf.Dialogs;
 
+using Serilog;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Navigation;
-using Serilog;
 using XivToolsWpf.Windows;
 
 /// <summary>
@@ -22,6 +23,8 @@ using XivToolsWpf.Windows;
 public partial class ErrorDialog : UserControl
 {
 	private Window? window;
+
+	public Func<Task<bool>>? OnQuitRequested { get; set; }
 
 	public ErrorDialog(Window? host, ExceptionDispatchInfo exDispatch, bool isCritical)
 	{
@@ -183,12 +186,29 @@ public partial class ErrorDialog : UserControl
 		return true;
 	}
 
-	private void OnQuitClick(object sender, RoutedEventArgs e)
+	private async void OnQuitClick(object sender, RoutedEventArgs e)
 	{
 		this.window?.Close();
 
-		Process p = Process.GetCurrentProcess();
-		p.Kill();
+		bool handled = false;
+		if (this.OnQuitRequested != null)
+		{
+			try
+			{
+				handled = await this.OnQuitRequested.Invoke();
+			}
+			catch (Exception ex)
+			{
+				Log.Warning(ex, "Error in OnQuitRequested callback");
+			}
+		}
+
+		if (!handled)
+		{
+			Log.Warning("No implemented handler for quit request. Forcefully terminating the application process...");
+			Process p = Process.GetCurrentProcess();
+			p.Kill();
+		}
 	}
 
 	private void OnOkClick(object sender, RoutedEventArgs e)
