@@ -180,6 +180,9 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 		this.SearchBox.CaretIndex = int.MaxValue;
 		this.xamlLoading = false;
 
+		// Capture the value from outside of the async task
+		var currentValue = this.Value;
+
 		if (this.LoadItems != null)
 		{
 			Task.Run(async () =>
@@ -197,7 +200,7 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 					this.ScrollPosition = value;
 				}
 
-				this.ListBox.ScrollIntoView(this.Value);
+				this.ListBox.ScrollIntoView(currentValue);
 			});
 		}
 		else
