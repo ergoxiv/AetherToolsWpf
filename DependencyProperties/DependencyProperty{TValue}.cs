@@ -7,7 +7,7 @@ using System.Windows;
 
 public class DependencyProperty<TValue> : IBind<TValue>
 {
-	private DependencyProperty dp;
+	private readonly DependencyProperty dp;
 
 	public DependencyProperty(DependencyProperty dp)
 	{
