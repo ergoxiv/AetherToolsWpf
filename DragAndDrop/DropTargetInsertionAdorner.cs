@@ -4,13 +4,12 @@
 namespace XivToolsWpf.DragAndDrop;
 
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Controls;
-using Serilog;
+using System.Windows.Media;
 
-public class DropTargetInsertionAdorner : DropTargetAdorner
+public class DropTargetInsertionAdorner(UIElement adornedElement, DragEventArgs args, DropTargetInsertionAdorner.InsertPositions position = DropTargetInsertionAdorner.InsertPositions.Top) : DropTargetAdorner(adornedElement, args)
 {
-	public readonly InsertPositions InsertPosition;
+	public readonly InsertPositions InsertPosition = position;
 
 	private static readonly Pen Pen;
 	private static readonly PathGeometry Triangle;
@@ -23,12 +22,12 @@ public class DropTargetInsertionAdorner : DropTargetAdorner
 		Pen = new Pen(Brushes.Gray, 2);
 		Pen.Freeze();
 
-		LineSegment firstLine = new LineSegment(new Point(0, -triangleSize), false);
+		var firstLine = new LineSegment(new Point(0, -triangleSize), false);
 		firstLine.Freeze();
-		LineSegment secondLine = new LineSegment(new Point(0, triangleSize), false);
+		var secondLine = new LineSegment(new Point(0, triangleSize), false);
 		secondLine.Freeze();
 
-		PathFigure figure = new PathFigure { StartPoint = new Point(triangleSize, 0) };
+		var figure = new PathFigure { StartPoint = new Point(triangleSize, 0) };
 		figure.Segments.Add(firstLine);
 		figure.Segments.Add(secondLine);
 		figure.Freeze();
@@ -36,12 +35,6 @@ public class DropTargetInsertionAdorner : DropTargetAdorner
 		Triangle = new PathGeometry();
 		Triangle.Figures.Add(figure);
 		Triangle.Freeze();
-	}
-
-	public DropTargetInsertionAdorner(UIElement adornedElement, DragEventArgs args, InsertPositions position = InsertPositions.Top)
-		: base(adornedElement, args)
-	{
-		this.InsertPosition = position;
 	}
 
 	public enum InsertPositions
@@ -68,51 +61,51 @@ public class DropTargetInsertionAdorner : DropTargetAdorner
 
 		object? context = args.GetContext<object>();
 
-		Rect itemRect = new Rect(itemContainer.TranslatePoint(default, this.AdornedElement), itemContainer.RenderSize);
+		var itemRect = new Rect(itemContainer.TranslatePoint(default, this.AdornedElement), itemContainer.RenderSize);
 		Point point1, point2;
 		double rotation = 0;
 
 		switch (this.InsertPosition)
 		{
 			case InsertPositions.Left:
-			{
-				point1 = new Point(itemRect.X, itemRect.Y);
-				point2 = new Point(itemRect.X, itemRect.Bottom);
-				rotation = 90;
-				break;
-			}
+				{
+					point1 = new Point(itemRect.X, itemRect.Y);
+					point2 = new Point(itemRect.X, itemRect.Bottom);
+					rotation = 90;
+					break;
+				}
 
 			case InsertPositions.Top:
-			{
-				point1 = new Point(itemRect.X, itemRect.Y);
-				point2 = new Point(itemRect.Right, itemRect.Y);
-				break;
-			}
+				{
+					point1 = new Point(itemRect.X, itemRect.Y);
+					point2 = new Point(itemRect.Right, itemRect.Y);
+					break;
+				}
 
 			case InsertPositions.Right:
-			{
-				itemRect.X += itemContainer.RenderSize.Width;
-				point1 = new Point(itemRect.X, itemRect.Y);
-				point2 = new Point(itemRect.X, itemRect.Bottom);
-				rotation = 90;
-				break;
-			}
+				{
+					itemRect.X += itemContainer.RenderSize.Width;
+					point1 = new Point(itemRect.X, itemRect.Y);
+					point2 = new Point(itemRect.X, itemRect.Bottom);
+					rotation = 90;
+					break;
+				}
 
 			case InsertPositions.Bottom:
-			{
-				itemRect.Y += itemContainer.RenderSize.Height;
-				point1 = new Point(itemRect.X, itemRect.Y);
-				point2 = new Point(itemRect.Right, itemRect.Y);
-				break;
-			}
+				{
+					itemRect.Y += itemContainer.RenderSize.Height;
+					point1 = new Point(itemRect.X, itemRect.Y);
+					point2 = new Point(itemRect.Right, itemRect.Y);
+					break;
+				}
 		}
 
 		drawingContext.DrawLine(Pen, point1, point2);
-		this.DrawTriangle(drawingContext, point1, rotation);
-		this.DrawTriangle(drawingContext, point2, 180 + rotation);
+		DrawTriangle(drawingContext, point1, rotation);
+		DrawTriangle(drawingContext, point2, 180 + rotation);
 	}
 
-	private void DrawTriangle(DrawingContext drawingContext, Point origin, double rotation)
+	private static void DrawTriangle(DrawingContext drawingContext, Point origin, double rotation)
 	{
 		drawingContext.PushTransform(new TranslateTransform(origin.X, origin.Y));
 		drawingContext.PushTransform(new RotateTransform(rotation));

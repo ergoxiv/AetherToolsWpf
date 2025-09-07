@@ -15,10 +15,7 @@ public static class Drawers
 
 	public static DataTemplate? GetDrawer(Type objectType)
 	{
-		if (genericDrawer == null)
-		{
-			genericDrawer = FindDrawer(typeof(void));
-		}
+		genericDrawer ??= FindDrawer(typeof(void));
 
 		// TODO:Cache these for faster lookups.
 		DataTemplate? template = FindDrawer(objectType);
@@ -32,7 +29,7 @@ public static class Drawers
 	{
 		if (resourceDictionary == null)
 		{
-			resourceDictionary = new();
+			resourceDictionary = [];
 			resourceDictionary.Source = new Uri("XivToolsWpf;component/Inspector/Drawers.xaml", UriKind.RelativeOrAbsolute);
 		}
 

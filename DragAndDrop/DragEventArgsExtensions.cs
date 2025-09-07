@@ -1,7 +1,9 @@
 ﻿// © XIV-Tools.
 // Licensed under the MIT license.
 
+#pragma warning disable IDE0130, IDE0079
 namespace System.Windows;
+#pragma warning disable IDE0130, IDE0079
 
 public static class DragEventArgsExtensions
 {

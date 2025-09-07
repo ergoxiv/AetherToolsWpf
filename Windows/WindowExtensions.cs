@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-public static class WindowExtensions
+public static partial class WindowExtensions
 {
 	public static bool GetIsActive(this Window? self)
 	{
@@ -18,6 +18,6 @@ public static class WindowExtensions
 		return GetForegroundWindow() == new WindowInteropHelper(self).Handle;
 	}
 
-	[DllImport("user32.dll")]
-	private static extern IntPtr GetForegroundWindow();
+	[LibraryImport("user32.dll")]
+	private static partial IntPtr GetForegroundWindow();
 }

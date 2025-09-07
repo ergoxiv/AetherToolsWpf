@@ -12,26 +12,26 @@ public class Binder
 {
 	public static DependencyProperty<TValue> Register<TValue, TOwner>(string propertyName, BindMode mode)
 	{
-		Action<DependencyObject, DependencyPropertyChangedEventArgs> callback = (d, e) => { };
-		return Register<TValue, TOwner>(propertyName, new PropertyChangedCallback(callback), mode);
+		static void callback(DependencyObject d, DependencyPropertyChangedEventArgs e) { }
+		return Register<TValue, TOwner>(propertyName, new PropertyChangedCallback((Action<DependencyObject, DependencyPropertyChangedEventArgs>)callback), mode);
 	}
 
 	public static DependencyProperty<TValue> Register<TValue, TOwner>(string propertyName, Action<TOwner, TValue>? changed = null, BindMode mode = BindMode.TwoWay)
 	{
-		Action<DependencyObject, DependencyPropertyChangedEventArgs> callback = (d, e) =>
+		void callback(DependencyObject d, DependencyPropertyChangedEventArgs e)
 		{
 			if (d is TOwner owner && e.NewValue is TValue value)
 			{
 				changed?.Invoke(owner, value);
 			}
-		};
+		}
 
-		return Register<TValue, TOwner>(propertyName, new PropertyChangedCallback(callback), mode);
+		return Register<TValue, TOwner>(propertyName, new PropertyChangedCallback((Action<DependencyObject, DependencyPropertyChangedEventArgs>)callback), mode);
 	}
 
 	public static DependencyProperty<TValue> Register<TValue, TOwner>(string propertyName, Action<TOwner, TValue, TValue> changed, BindMode mode = BindMode.TwoWay)
 	{
-		Action<DependencyObject, DependencyPropertyChangedEventArgs> callback = (d, e) =>
+		void callback(DependencyObject d, DependencyPropertyChangedEventArgs e)
 		{
 			if (d is TOwner owner)
 			{
@@ -39,28 +39,32 @@ public class Binder
 				TValue newValue = (TValue)e.NewValue;
 				changed?.Invoke(owner, oldValue, newValue);
 			}
-		};
+		}
 
-		return Register<TValue, TOwner>(propertyName, new PropertyChangedCallback(callback), mode);
+		return Register<TValue, TOwner>(propertyName, new PropertyChangedCallback((Action<DependencyObject, DependencyPropertyChangedEventArgs>)callback), mode);
 	}
 
 	private static DependencyProperty<TValue> Register<TValue, TOwner>(string propertyName, PropertyChangedCallback callback, BindMode mode)
 	{
 		PropertyInfo? property = typeof(TOwner).GetProperty(propertyName);
+#pragma warning disable IDE0270
 		if (property == null)
 			throw new Exception("Failed to locate property: \"" + propertyName + "\" on type: \"" + typeof(TOwner) + "\" for binding.");
+#pragma warning restore IDE0270
 
-		FrameworkPropertyMetadata meta = new FrameworkPropertyMetadata(new PropertyChangedCallback(callback));
-		meta.BindsTwoWayByDefault = mode == BindMode.TwoWay;
-		meta.DefaultUpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged;
-		meta.Inherits = true;
+		var meta = new FrameworkPropertyMetadata(new PropertyChangedCallback(callback))
+		{
+			BindsTwoWayByDefault = mode == BindMode.TwoWay,
+			DefaultUpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+			Inherits = true
+		};
+
 		DependencyProperty dp = DependencyProperty.Register(propertyName, typeof(TValue), typeof(TOwner), meta);
-		DependencyProperty<TValue> dpv = new DependencyProperty<TValue>(dp);
+		var dpv = new DependencyProperty<TValue>(dp);
 		return dpv;
 	}
 }
 
-#pragma warning disable SA1201
 public enum BindMode
 {
 	OneWay,

@@ -42,7 +42,7 @@ public partial class ErrorDialog : UserControl
 		if (exDispatch.SourceException is AggregateException aggEx && aggEx.InnerException != null)
 			ex = aggEx.InnerException;
 
-		StringBuilder builder = new StringBuilder();
+		var builder = new StringBuilder();
 		builder.Append(ex.Message);
 
 		if (ex.InnerException != null)
@@ -84,7 +84,7 @@ public partial class ErrorDialog : UserControl
 		{
 			try
 			{
-				ErrorDialog errorDialog = new ErrorDialog(null, ex, isCriticial);
+				var errorDialog = new ErrorDialog(null, ex, isCriticial);
 				errorDialog.window = new StyledWindow(errorDialog);
 				errorDialog.window.ShowDialog();
 
@@ -103,6 +103,22 @@ public partial class ErrorDialog : UserControl
 		});
 	}
 
+	private static bool GetPath(string stackLine, out string? path, out string? line)
+	{
+		path = null;
+		line = null;
+
+		stackLine = stackLine.Trim();
+		string[] parts = stackLine.Split(' ');
+		if (parts.Length != 2)
+			return false;
+
+		path = parts[0];
+		line = parts[1];
+		path = path.Replace(":line", string.Empty);
+		return true;
+	}
+
 	private void StackTraceFormatter(string stackTrace)
 	{
 		if (string.IsNullOrEmpty(stackTrace))
@@ -117,17 +133,16 @@ public partial class ErrorDialog : UserControl
 
 	private void StackTraceLineFormatter(string line)
 	{
-		string[] parts = line.Split(new[] { " in " }, StringSplitOptions.RemoveEmptyEntries);
+		string[] parts = line.Split([" in "], StringSplitOptions.RemoveEmptyEntries);
 
 		if (parts.Length == 2)
 		{
 			this.StackTraceBlock.Inlines.Add(new Run(parts[0]));
 			this.StackTraceBlock.Inlines.Add(new Run(" @ ") { Foreground = Brushes.LightGray });
 
-			string? path;
-			if (this.GetPath(parts[1], out path, out _) && File.Exists(path))
+			if (GetPath(parts[1], out string? path, out _) && File.Exists(path))
 			{
-				Hyperlink link = new Hyperlink(new Run(parts[1] + "\n"));
+				var link = new Hyperlink(new Run(parts[1] + "\n"));
 				link.RequestNavigate += this.Link_RequestNavigate;
 				link.NavigateUri = new Uri(parts[1]);
 				this.StackTraceBlock.Inlines.Add(link);
@@ -145,10 +160,7 @@ public partial class ErrorDialog : UserControl
 
 	private void Link_RequestNavigate(object sender, RequestNavigateEventArgs e)
 	{
-		string? path;
-		string? line;
-
-		if (!this.GetPath(e.Uri.OriginalString, out path, out line))
+		if (!GetPath(e.Uri.OriginalString, out string? path, out string? line))
 			return;
 
 		try
@@ -168,22 +180,6 @@ public partial class ErrorDialog : UserControl
 		{
 			Log.Warning(ex, "Failed to navigate to source file");
 		}
-	}
-
-	private bool GetPath(string stackLine, out string? path, out string? line)
-	{
-		path = null;
-		line = null;
-
-		stackLine = stackLine.Trim();
-		string[] parts = stackLine.Split(' ');
-		if (parts.Length != 2)
-			return false;
-
-		path = parts[0];
-		line = parts[1];
-		path = path.Replace(":line", string.Empty);
-		return true;
 	}
 
 	private async void OnQuitClick(object sender, RoutedEventArgs e)
@@ -216,11 +212,7 @@ public partial class ErrorDialog : UserControl
 		this.window?.Close();
 	}
 
-	public class ErrorException : Exception
+	public class ErrorException(Exception inner) : Exception("An error was encountered when presenting the error dialog", inner)
 	{
-		public ErrorException(Exception inner)
-			: base("An error was encountered when presenting the error dialog", inner)
-		{
-		}
 	}
 }

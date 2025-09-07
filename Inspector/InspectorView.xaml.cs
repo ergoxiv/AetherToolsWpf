@@ -3,16 +3,15 @@
 
 namespace XivToolsWpf.Inspector;
 
+using PropertyChanged;
 using System;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Controls;
 using XivToolsWpf.DependencyProperties;
-using PropertyChanged;
-
 using Binder = XivToolsWpf.DependencyProperties.Binder;
-using System.ComponentModel;
-using System.Windows;
 
 [AddINotifyPropertyChangedInterface]
 public partial class InspectorView : UserControl
@@ -27,7 +26,7 @@ public partial class InspectorView : UserControl
 		OnTargetChanged(this, this.Target);
 	}
 
-	public ObservableCollection<Entry> Entries { get; set; } = new();
+	public ObservableCollection<Entry> Entries { get; set; } = [];
 
 	public object? Target
 	{

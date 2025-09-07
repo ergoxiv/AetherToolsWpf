@@ -1,7 +1,9 @@
 ﻿// © XIV-Tools.
 // Licensed under the MIT license.
 
+#pragma warning disable IDE0130
 namespace XivToolsWpf;
+#pragma warning restore IDE0130
 
 using System;
 using System.Runtime.CompilerServices;

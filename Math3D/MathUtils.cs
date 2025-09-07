@@ -217,11 +217,11 @@ public static class MathUtils
 		double y2 = bounds.Y + bounds.SizeY;
 		double z2 = bounds.Z + bounds.SizeZ;
 
-		Point3D[] points = new Point3D[]
-		{
+		Point3D[] points =
+		[
 			new(x1, y1, z1), new(x1, y1, z2), new(x1, y2, z1), new(x1, y2, z2),
 			new(x2, y1, z1), new(x2, y1, z2), new(x2, y2, z1), new(x2, y2, z2),
-		};
+		];
 
 		transform.Transform(points);
 

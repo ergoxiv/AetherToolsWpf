@@ -3,7 +3,6 @@
 
 namespace XivToolsWpf.Selectors;
 
-using System;
 using System.Collections.Generic;
 using System.Windows.Controls;
 using XivToolsWpf;
@@ -43,13 +42,7 @@ public partial class GenericSelector : UserControl
 		}
 	}
 
-	private void OnSelectionChanged(bool close)
-	{
-		this.SelectionChanged?.Invoke(close);
-	}
-
-#pragma warning disable SA1011
-	private bool OnFilter(object obj, string[]? search = null)
+	private static bool OnFilter(object obj, string[]? search = null)
 	{
 		if (obj is ISelectable item)
 		{
@@ -64,9 +57,13 @@ public partial class GenericSelector : UserControl
 
 		return false;
 	}
+
+	private void OnSelectionChanged(bool close)
+	{
+		this.SelectionChanged?.Invoke(close);
+	}
 }
 
-#pragma warning disable SA1201
 public interface ISelectable
 {
 	string Name { get; }

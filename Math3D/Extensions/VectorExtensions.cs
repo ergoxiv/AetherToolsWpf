@@ -46,7 +46,7 @@ public static class VectorExtensions
 	/// <exception cref="FormatException">Thrown if the string does not contain exactly three components.</exception>
 	public static Vector3 FromString3D(string str)
 	{
-		string[] parts = str.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+		string[] parts = str.Split([", "], StringSplitOptions.RemoveEmptyEntries);
 
 		if (parts.Length != 3)
 			throw new FormatException();
@@ -94,7 +94,7 @@ public static class VectorExtensions
 	/// <exception cref="FormatException">Thrown if the string does not contain exactly two components.</exception>
 	public static Vector2 FromString2D(string str)
 	{
-		string[] parts = str.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+		string[] parts = str.Split([", "], StringSplitOptions.RemoveEmptyEntries);
 
 		if (parts.Length != 2)
 			throw new FormatException();
