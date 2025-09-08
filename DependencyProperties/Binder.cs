@@ -46,11 +46,8 @@ public class Binder
 
 	private static DependencyProperty<TValue> Register<TValue, TOwner>(string propertyName, PropertyChangedCallback callback, BindMode mode)
 	{
-		PropertyInfo? property = typeof(TOwner).GetProperty(propertyName);
-#pragma warning disable IDE0270
-		if (property == null)
-			throw new Exception("Failed to locate property: \"" + propertyName + "\" on type: \"" + typeof(TOwner) + "\" for binding.");
-#pragma warning restore IDE0270
+		PropertyInfo? property = typeof(TOwner).GetProperty(propertyName)
+			?? throw new Exception("Failed to locate property: \"" + propertyName + "\" on type: \"" + typeof(TOwner) + "\" for binding.");
 
 		var meta = new FrameworkPropertyMetadata(new PropertyChangedCallback(callback))
 		{
