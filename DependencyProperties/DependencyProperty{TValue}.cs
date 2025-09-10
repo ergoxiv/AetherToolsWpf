@@ -9,6 +9,8 @@ public class DependencyProperty<TValue>(DependencyProperty dp) : IBind<TValue>
 {
 	private readonly DependencyProperty dp = dp;
 
+	public DependencyProperty Property => this.dp;
+
 	public TValue Get(DependencyObject control) => (TValue)control.GetValue(this.dp);
 
 	public void Set(DependencyObject control, TValue value)
