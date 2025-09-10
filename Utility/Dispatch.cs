@@ -1,7 +1,9 @@
 ﻿// © XIV-Tools.
 // Licensed under the MIT license.
 
+#pragma warning disable IDE0130
 namespace XivToolsWpf;
+#pragma warning restore IDE0130
 
 using System;
 using System.Runtime.CompilerServices;
@@ -10,30 +12,19 @@ using System.Windows;
 
 public static class Dispatch
 {
-	public static SwitchToUiAwaitable MainThread()
-	{
-		return default(SwitchToUiAwaitable);
-	}
+	public static SwitchToUiAwaitable MainThread() => default;
 
-	public static SwitchFromUiAwaitable NonUiThread()
-	{
-		return default(SwitchFromUiAwaitable);
-	}
+	public static SwitchFromUiAwaitable NonUiThread() => default;
 
 	public struct SwitchToUiAwaitable : INotifyCompletion
 	{
-		public bool IsCompleted => Application.Current?.Dispatcher.CheckAccess() == true;
+		public readonly bool IsCompleted => Application.Current?.Dispatcher.CheckAccess() == true;
 
-		public SwitchToUiAwaitable GetAwaiter()
-		{
-			return this;
-		}
+		public readonly SwitchToUiAwaitable GetAwaiter() => this;
 
-		public void GetResult()
-		{
-		}
+		public readonly void GetResult() { }
 
-		public void OnCompleted(Action continuation)
+		public readonly void OnCompleted(Action continuation)
 		{
 			Application.Current?.Dispatcher.BeginInvoke(continuation);
 		}
@@ -41,18 +32,13 @@ public static class Dispatch
 
 	public struct SwitchFromUiAwaitable : INotifyCompletion
 	{
-		public bool IsCompleted => Application.Current?.Dispatcher.CheckAccess() == false;
+		public readonly bool IsCompleted => Application.Current?.Dispatcher.CheckAccess() == false;
 
-		public SwitchFromUiAwaitable GetAwaiter()
-		{
-			return this;
-		}
+		public readonly SwitchFromUiAwaitable GetAwaiter() => this;
 
-		public void GetResult()
-		{
-		}
+		public readonly void GetResult() { }
 
-		public void OnCompleted(Action continuation)
+		public readonly void OnCompleted(Action continuation)
 		{
 			Task.Run(continuation);
 		}

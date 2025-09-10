@@ -37,7 +37,7 @@ public class Line : ModelVisual3D, IDisposable
 		this.SetColor(this.Color);
 
 		this.Content = this.model;
-		this.Points = new Point3DCollection();
+		this.Points = [];
 
 		CompositionTarget.Rendering += this.OnRender;
 	}

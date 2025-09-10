@@ -156,8 +156,7 @@ public partial class NumberBox : UserControl, INotifyPropertyChanged
 		{
 			this.inputString = value;
 
-			double val;
-			if (double.TryParse(value, out val))
+			if (double.TryParse(value, out double val))
 			{
 				this.DisplayValue = val;
 				this.ErrorDisplay.Visibility = Visibility.Collapsed;

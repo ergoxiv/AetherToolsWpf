@@ -21,7 +21,7 @@ public static class QuaternionExtensions
 	/// <exception cref="FormatException">Thrown if the string does not contain exactly four components.</exception>
 	public static Quaternion FromString(string str)
 	{
-		string[] parts = str.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+		string[] parts = str.Split([", "], StringSplitOptions.RemoveEmptyEntries);
 
 		if (parts.Length != 4)
 			throw new FormatException("The provided string does not have four components");

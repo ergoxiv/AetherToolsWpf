@@ -128,8 +128,7 @@ public class Sphere : ModelVisual3D, IDisposable
 	/// <returns>A new <see cref="MeshGeometry3D"/> instance with the same data.</returns>
 	private static MeshGeometry3D CloneMeshGeometry3D(MeshGeometry3D? mesh)
 	{
-		if (mesh == null)
-			throw new ArgumentNullException(nameof(mesh));
+		ArgumentNullException.ThrowIfNull(mesh);
 
 		return new MeshGeometry3D
 		{

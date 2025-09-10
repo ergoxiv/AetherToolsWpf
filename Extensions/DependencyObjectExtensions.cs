@@ -1,7 +1,9 @@
 ﻿// © XIV-Tools.
 // Licensed under the MIT license.
 
+#pragma warning disable IDE0130
 namespace System.Windows;
+#pragma warning restore IDE0130
 
 using System.Collections.Generic;
 using System.Windows.Media;
@@ -16,9 +18,7 @@ public static class DependencyObjectExtensions
 		if (parentObject == null)
 			return null;
 
-		T? parent = parentObject as T;
-
-		if (parent != null)
+		if (parentObject is T parent)
 		{
 			return parent;
 		}
@@ -31,7 +31,7 @@ public static class DependencyObjectExtensions
 	public static T? FindChild<T>(this DependencyObject self)
 		where T : notnull
 	{
-		List<T> results = new List<T>();
+		var results = new List<T>();
 		self.FindChildren<T>(ref results);
 
 		if (results.Count == 0)
@@ -42,7 +42,7 @@ public static class DependencyObjectExtensions
 
 	public static List<T> FindChildren<T>(this DependencyObject self)
 	{
-		List<T> results = new List<T>();
+		var results = new List<T>();
 		self.FindChildren<T>(ref results);
 		return results;
 	}

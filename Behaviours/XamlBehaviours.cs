@@ -9,7 +9,7 @@ using System.Windows;
 
 public static class XamlBehaviours
 {
-	private static readonly ConditionalWeakTable<DependencyObject, Behaviour> AttachedHandlers = new();
+	private static readonly ConditionalWeakTable<DependencyObject, Behaviour> AttachedHandlers = [];
 
 	public static void AttachHandler<T>(this DependencyObject element, bool enable, object? value = null)
 		where T : Behaviour
@@ -20,11 +20,11 @@ public static class XamlBehaviours
 			{
 				if (value == null)
 				{
-					handler = Activator.CreateInstance(typeof(T), new[] { element }) as Behaviour;
+					handler = Activator.CreateInstance(typeof(T), [element]) as Behaviour;
 				}
 				else
 				{
-					handler = Activator.CreateInstance(typeof(T), new[] { element, value }) as Behaviour;
+					handler = Activator.CreateInstance(typeof(T), [element, value]) as Behaviour;
 				}
 
 				if (handler == null)

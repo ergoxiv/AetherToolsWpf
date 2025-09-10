@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 public static class DependencyFactory
 {
-	private static readonly Dictionary<Type, IDependency> Dependencies = new Dictionary<Type, IDependency>();
+	private static readonly Dictionary<Type, IDependency> Dependencies = [];
 
 	public static void RegisterDependency<T>(T dependancy)
 		where T : IDependency
@@ -22,8 +22,7 @@ public static class DependencyFactory
 	public static T GetDependency<T>()
 		where T : IDependency
 	{
-		IDependency? dep;
-		if (!Dependencies.TryGetValue(typeof(T), out dep))
+		if (!Dependencies.TryGetValue(typeof(T), out IDependency? dep))
 			throw new Exception($"No dependency registered for type: {typeof(T)}");
 
 		return (T)dep;

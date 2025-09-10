@@ -47,7 +47,7 @@ public class MaterialDesignBorderClipConverter : IMultiValueConverter
 	}
 
 	// https://wpfspark.wordpress.com/2011/06/08/clipborder-a-wpf-border-that-clips/
-	private static Geometry GetRoundRectangle(Rect baseRect, Thickness borderThickness, CornerRadius cornerRadius)
+	private static StreamGeometry GetRoundRectangle(Rect baseRect, Thickness borderThickness, CornerRadius cornerRadius)
 	{
 		// Normalizing the corner radius
 		if (cornerRadius.TopLeft < double.Epsilon)

@@ -50,6 +50,47 @@ public class Reorderable : Behaviour
 
 		this.dragAdorner?.Detach();
 		this.dragAdorner = null;
+
+		GC.SuppressFinalize(this);
+	}
+
+	private static DropTargetInsertionAdorner.InsertPositions GetDropPosition(object sender, DragEventArgs e)
+	{
+		if (sender is not FrameworkElement senderElement)
+			return DropTargetInsertionAdorner.InsertPositions.Left;
+
+		Point dropPoint = e.GetPosition(senderElement);
+
+		bool vertical = false;
+
+		StackPanel? itemParent = senderElement.FindParent<StackPanel>();
+		if (itemParent != null)
+		{
+			vertical = itemParent.Orientation == Orientation.Vertical;
+		}
+
+		if (vertical)
+		{
+			if (dropPoint.Y > (senderElement.ActualHeight / 2))
+			{
+				return DropTargetInsertionAdorner.InsertPositions.Bottom;
+			}
+			else
+			{
+				return DropTargetInsertionAdorner.InsertPositions.Top;
+			}
+		}
+		else
+		{
+			if (dropPoint.X > (senderElement.ActualWidth / 2))
+			{
+				return DropTargetInsertionAdorner.InsertPositions.Right;
+			}
+			else
+			{
+				return DropTargetInsertionAdorner.InsertPositions.Left;
+			}
+		}
 	}
 
 	private void OnContainerGeneratorStatusChanged(object? sender, EventArgs e)
@@ -81,9 +122,7 @@ public class Reorderable : Behaviour
 
 	private void DetachFromContainerContext(object context)
 	{
-		UIElement? itemContainer = this.ItemsControl.ItemContainerGenerator.ContainerFromItem(context) as UIElement;
-
-		if (itemContainer == null)
+		if (this.ItemsControl.ItemContainerGenerator.ContainerFromItem(context) is not UIElement itemContainer)
 			return;
 
 		itemContainer.AllowDrop = false;
@@ -98,9 +137,7 @@ public class Reorderable : Behaviour
 
 	private void AttachToContainerContext(object context)
 	{
-		UIElement? itemContainer = this.ItemsControl.ItemContainerGenerator.ContainerFromItem(context) as UIElement;
-
-		if (itemContainer == null)
+		if (this.ItemsControl.ItemContainerGenerator.ContainerFromItem(context) is not UIElement itemContainer)
 			return;
 
 		itemContainer.AllowDrop = true;
@@ -149,19 +186,13 @@ public class Reorderable : Behaviour
 		if (sender is not FrameworkElement senderElement)
 			return;
 
-		DropTargetInsertionAdorner.InsertPositions insertPosition = this.GetDropPosition(sender, e);
+		DropTargetInsertionAdorner.InsertPositions insertPosition = GetDropPosition(sender, e);
 		bool isNext = insertPosition == DropTargetInsertionAdorner.InsertPositions.Right || insertPosition == DropTargetInsertionAdorner.InsertPositions.Bottom;
 
-		IList? source = this.ItemsControl.ItemsSource as IList;
-
-		if (source == null)
+		if (this.ItemsControl.ItemsSource is not IList source)
 			throw new Exception("Items control items source is not an IList");
 
-		object? context = e.GetContext();
-
-		if (context == null)
-			throw new Exception("No context in drag");
-
+		object? context = e.GetContext() ?? throw new Exception("No context in drag");
 		Type type = source.GetType();
 		Type itemType = type.GenericTypeArguments[0];
 
@@ -196,8 +227,7 @@ public class Reorderable : Behaviour
 		}
 
 		// Is the thing being dragged a compatibile type
-		ICollection? source = this.ItemsControl.ItemsSource as ICollection;
-		if (source != null)
+		if (this.ItemsControl.ItemsSource is ICollection source)
 		{
 			Type type = source.GetType();
 			Type itemType = type.GenericTypeArguments[0];
@@ -212,11 +242,7 @@ public class Reorderable : Behaviour
 		e.Effects = DragDropEffects.Move;
 		e.SetTarget(senderElement);
 
-		if (this.dragAdorner == null)
-		{
-			this.dragAdorner = new(senderElement, e);
-		}
-
+		this.dragAdorner ??= new(senderElement, e);
 		this.OnDragOver(sender, e);
 	}
 
@@ -228,7 +254,7 @@ public class Reorderable : Behaviour
 		if (sender is not FrameworkElement senderElement)
 			return;
 
-		DropTargetInsertionAdorner.InsertPositions newPos = this.GetDropPosition(sender, e);
+		DropTargetInsertionAdorner.InsertPositions newPos = GetDropPosition(sender, e);
 
 		if (this.dragAdorner.InsertPosition != newPos)
 		{
@@ -249,45 +275,6 @@ public class Reorderable : Behaviour
 		}
 
 		e.Handled = true;
-	}
-
-	private DropTargetInsertionAdorner.InsertPositions GetDropPosition(object sender, DragEventArgs e)
-	{
-		if (sender is not FrameworkElement senderElement)
-			return DropTargetInsertionAdorner.InsertPositions.Left;
-
-		Point dropPoint = e.GetPosition(senderElement);
-
-		bool vertical = false;
-
-		StackPanel? itemParent = senderElement.FindParent<StackPanel>();
-		if (itemParent != null)
-		{
-			vertical = itemParent.Orientation == Orientation.Vertical;
-		}
-
-		if (vertical)
-		{
-			if (dropPoint.Y > (senderElement.ActualHeight / 2))
-			{
-				return DropTargetInsertionAdorner.InsertPositions.Bottom;
-			}
-			else
-			{
-				return DropTargetInsertionAdorner.InsertPositions.Top;
-			}
-		}
-		else
-		{
-			if (dropPoint.X > (senderElement.ActualWidth / 2))
-			{
-				return DropTargetInsertionAdorner.InsertPositions.Right;
-			}
-			else
-			{
-				return DropTargetInsertionAdorner.InsertPositions.Left;
-			}
-		}
 	}
 
 	private void OnDragLeave(object sender, DragEventArgs e)

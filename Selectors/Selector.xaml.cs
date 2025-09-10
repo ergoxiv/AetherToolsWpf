@@ -105,10 +105,6 @@ public partial class Selector : UserControl, INotifyPropertyChanged
 		}
 	}
 
-	public void OnClosed()
-	{
-	}
-
 	public void ClearItems()
 	{
 		lock (this.entries)
