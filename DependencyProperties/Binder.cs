@@ -20,9 +20,9 @@ public class Binder
 	{
 		void callback(DependencyObject d, DependencyPropertyChangedEventArgs e)
 		{
-			if (d is TOwner owner && e.NewValue is TValue value)
+			if (d is TOwner owner)
 			{
-				changed?.Invoke(owner, value);
+				changed?.Invoke(owner, (TValue)e.NewValue);
 			}
 		}
 
@@ -35,9 +35,7 @@ public class Binder
 		{
 			if (d is TOwner owner)
 			{
-				TValue oldValue = (TValue)e.OldValue;
-				TValue newValue = (TValue)e.NewValue;
-				changed?.Invoke(owner, oldValue, newValue);
+				changed?.Invoke(owner, (TValue)e.OldValue, (TValue)e.NewValue);
 			}
 		}
 
