@@ -42,7 +42,7 @@ public partial class GenericSelector : UserControl
 		}
 	}
 
-	private static bool OnFilter(object obj, string[]? search = null)
+	public bool OnFilter(object obj, string[]? search)
 	{
 		if (obj is ISelectable item)
 		{
