@@ -113,36 +113,18 @@ public class Line : ModelVisual3D, IDisposable
 	/// <returns>The nearest point on the line, or null if no point is found.</returns>
 	public Point3D? NearestPoint2D(Point3D cameraPoint)
 	{
+		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0)
+			return null;
+
 		var viewport = this.GetOrFindViewport();
-		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0 || viewport == null || this.cachedRoot3D == null)
+		if (viewport == null)
 			return null;
 
-		Matrix4x4 modelToWorld;
-		try
-		{
-			GeneralTransform3D transform = this.TransformToAncestor(this.cachedRoot3D);
-
-			if (transform is Transform3D t3d)
-			{
-				modelToWorld = t3d.Value.ToMatrix4x4();
-			}
-			else
-			{
-				modelToWorld = Matrix4x4.Identity;
-			}
-
-			if (this.cachedRoot3D.Transform != null && !this.cachedRoot3D.Transform.Value.IsIdentity)
-			{
-				modelToWorld *= this.cachedRoot3D.Transform.Value.ToMatrix4x4();
-			}
-		}
-		catch (InvalidOperationException)
-		{
-			this.cachedViewport = null;
+		Matrix4x4? modelToWorld = this.TryGetModelToWorldMatrix();
+		if (modelToWorld == null)
 			return null;
-		}
 
-		if (!MathUtils.TryTransformVisualToViewport(viewport, modelToWorld, out Matrix4x4 matrix))
+		if (!MathUtils.TryTransformVisualToViewport(viewport, (Matrix4x4)modelToWorld, out Matrix4x4 matrix))
 			return null;
 
 		float closest = float.MaxValue;
@@ -201,32 +183,11 @@ public class Line : ModelVisual3D, IDisposable
 		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0 || this.cachedRoot3D == null)
 			return;
 
-		Matrix4x4 modelToWorld;
-		try
-		{
-			GeneralTransform3D transform = this.TransformToAncestor(this.cachedRoot3D);
-
-			if (transform is Transform3D t3d)
-			{
-				modelToWorld = t3d.Value.ToMatrix4x4();
-			}
-			else
-			{
-				modelToWorld = Matrix4x4.Identity;
-			}
-
-			if (this.cachedRoot3D.Transform != null && !this.cachedRoot3D.Transform.Value.IsIdentity)
-			{
-				modelToWorld *= this.cachedRoot3D.Transform.Value.ToMatrix4x4();
-			}
-		}
-		catch (InvalidOperationException)
-		{
-			this.cachedViewport = null;
+		Matrix4x4? modelToWorld = this.TryGetModelToWorldMatrix();
+		if (modelToWorld == null)
 			return;
-		}
 
-		Matrix4x4 newV2S = modelToWorld * viewProjScreen;
+		Matrix4x4 newV2S = (Matrix4x4)modelToWorld * viewProjScreen;
 		if (newV2S.IsApproximately(this.visualToScreen, APPROX_EQUALITY_EPSILON))
 			return;
 
@@ -531,5 +492,38 @@ public class Line : ModelVisual3D, IDisposable
 		this.Points.Add(positions[i2]);
 		this.Points.Add(positions[i2]);
 		this.Points.Add(positions[i0]);
+	}
+
+	private Matrix4x4? TryGetModelToWorldMatrix()
+	{
+		if (this.cachedRoot3D == null)
+			return null;
+
+		try
+		{
+			GeneralTransform3D transform = this.TransformToAncestor(this.cachedRoot3D);
+
+			Matrix4x4 modelToWorld;
+			if (transform is Transform3D t3d)
+			{
+				modelToWorld = t3d.Value.ToMatrix4x4();
+			}
+			else
+			{
+				modelToWorld = Matrix4x4.Identity;
+			}
+
+			if (this.cachedRoot3D.Transform != null && !this.cachedRoot3D.Transform.Value.IsIdentity)
+			{
+				modelToWorld *= this.cachedRoot3D.Transform.Value.ToMatrix4x4();
+			}
+
+			return modelToWorld;
+		}
+		catch (InvalidOperationException)
+		{
+			this.cachedViewport = null;
+			return null;
+		}
 	}
 }
