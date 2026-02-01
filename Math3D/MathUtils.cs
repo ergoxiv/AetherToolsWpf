@@ -5,17 +5,32 @@ namespace XivToolsWpf.Math3D;
 
 using System;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using XivToolsWpf.Math3D.Extensions;
 
 public static class MathUtils
 {
+	public static readonly Matrix3D IdentityMatrix = Matrix3D.Identity;
 	public static readonly Matrix3D ZeroMatrix = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+	public static readonly Matrix4x4 ZeroMatrix4x4 = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	public static readonly Vector3D XAxis = new(1, 0, 0);
 	public static readonly Vector3D YAxis = new(0, 1, 0);
 	public static readonly Vector3D ZAxis = new(0, 0, 1);
+
+	private const double DEG_TO_RAD = Math.PI / 180.0;
+	private const float DEG_TO_RADF = (float)(Math.PI / 180.0);
+	private const double RAD_TO_DEG = 180.0 / Math.PI;
+	private const float RAD_TO_DEGF = (float)(180.0 / Math.PI);
+
+	private const float LOOK_DIR_EPSILON = 1e-10f;
+	private const float PARALLEL_VEC_DOT_THRESHOLD = 0.9999f;
+	private const float MIN_FOV = 0.001f;
+	private const float MAX_FOV = 179.999f;
+	private const float MIN_ORTHO_SIZE = 1e-5f;
 
 	/// <summary>Gets the aspect ratio of the specified size.</summary>
 	/// <param name="size">The size to calculate the aspect ratio for.</param>
@@ -27,13 +42,25 @@ public static class MathUtils
 	/// <param name="degrees">The angle in degrees.</param>
 	/// <returns>The angle in radians.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180.0);
+	public static double DegreesToRadians(double degrees) => degrees * DEG_TO_RAD;
+
+	/// <summary>Converts degrees to radians.</summary>
+	/// <param name="degrees">The angle in degrees.</param>
+	/// <returns>The angle in radians.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static float DegreesToRadians(float degrees) => degrees * DEG_TO_RADF;
 
 	/// <summary>Converts radians to degrees.</summary>
 	/// <param name="radians">The angle in radians.</param>
 	/// <returns>The angle in degrees.</returns>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static double RadiansToDegrees(double radians) => radians * (180 / Math.PI);
+	public static double RadiansToDegrees(double radians) => radians * RAD_TO_DEG;
+
+	/// <summary>Converts radians to degrees.</summary>
+	/// <param name="radians">The angle in radians.</param>
+	/// <returns>The angle in degrees.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static float RadiansToDegrees(float radians) => radians * RAD_TO_DEGF;
 
 	/// <summary>
 	/// Computes the effective view matrix for the given camera.
@@ -42,13 +69,23 @@ public static class MathUtils
 	/// <returns>The view matrix for the camera.</returns>
 	/// <exception cref="ArgumentNullException">Thrown when the camera is null.</exception>
 	/// <exception cref="ArgumentException">Thrown when the camera type is unsupported.</exception>
-	public static Matrix3D GetViewMatrix(Camera camera) => camera switch
+	public static Matrix3D GetViewMatrix(Camera camera)
 	{
-		null => throw new ArgumentNullException(nameof(camera)),
-		ProjectionCamera projectionCamera => GetViewMatrix(projectionCamera),
-		MatrixCamera matrixCamera => matrixCamera.ViewMatrix,
-		_ => throw new ArgumentException($"Unsupported camera type '{camera.GetType().FullName}'.", nameof(camera))
-	};
+		ArgumentNullException.ThrowIfNull(camera);
+
+		if (camera is MatrixCamera matrixCamera)
+			return matrixCamera.ViewMatrix;
+
+		if (camera is ProjectionCamera projectionCamera)
+		{
+			if (TryGetViewMatrixInternal(projectionCamera, applyTransform: false, out Matrix4x4 view))
+				return view.ToMatrix3D();
+
+			return IdentityMatrix; // Fallback
+		}
+
+		throw new ArgumentException($"Unsupported camera type '{camera.GetType().FullName}'.", nameof(camera));
+	}
 
 	/// <summary>
 	/// Computes the effective projection matrix for the given camera.
@@ -58,148 +95,269 @@ public static class MathUtils
 	/// <returns>The projection matrix for the camera.</returns>
 	/// <exception cref="ArgumentNullException">Thrown when the camera is null.</exception>
 	/// <exception cref="ArgumentException">Thrown when the camera type is unsupported.</exception>
-	public static Matrix3D GetProjectionMatrix(Camera camera, double aspectRatio) => camera switch
+	public static Matrix3D GetProjectionMatrix(Camera camera, double aspectRatio)
 	{
-		null => throw new ArgumentNullException(nameof(camera)),
-		PerspectiveCamera perspectiveCamera => GetProjectionMatrix(perspectiveCamera, aspectRatio),
-		OrthographicCamera orthographicCamera => GetProjectionMatrix(orthographicCamera, aspectRatio),
-		MatrixCamera matrixCamera => matrixCamera.ProjectionMatrix,
-		_ => throw new ArgumentException($"Unsupported camera type '{camera.GetType().FullName}'.", nameof(camera))
-	};
+		ArgumentNullException.ThrowIfNull(camera);
+
+		if (camera is MatrixCamera matrixCamera)
+			return matrixCamera.ProjectionMatrix;
+
+		if (TryGetProjectionMatrixInternal(camera, (float)aspectRatio, out Matrix4x4 proj))
+			return proj.ToMatrix3D();
+
+		throw new ArgumentException($"Unsupported camera type '{camera.GetType().FullName}'.", nameof(camera));
+	}
 
 	/// <summary>
-	/// Computes the transformation matrix from the specified visual to the viewport.
+	/// Finds the nearest <see cref="Viewport3DVisual"/> ancestor of the given visual and
+	/// calculates the transform from the visual to the viewport's coordinate space.
 	/// </summary>
-	/// <param name="visual">The visual to compute the transformation for.</param>
-	/// <param name="matrix">The resulting transformation matrix.</param>
-	/// <returns>True if the transformation was successful; otherwise, false.</returns>
-	public static bool ToViewportTransform(DependencyObject visual, out Matrix3D matrix)
+	/// <remarks>
+	/// The viewport's coordinate space is considered to be the world space.
+	/// </remarks>
+	/// <param name="visual">
+	/// The visual to start searching from.
+	/// </param>
+	/// <param name="modelToWorld">
+	/// The output relative visual to viewport transform.
+	/// Returns the accumulated transform from the visual to the viewport if a viewport is found;
+	/// Otherwise, the method returns the identity matrix.
+	/// </param>
+	/// <returns>
+	/// The nearest <see cref="Viewport3DVisual"/> ancestor, or null if none is found.
+	/// </returns>
+	public static Viewport3DVisual? FindViewport(DependencyObject visual, out Matrix4x4 modelToWorld)
 	{
-		matrix = Matrix3D.Identity;
-		Matrix3D toWorld = GetWorldTransformationMatrix(visual, out var viewportVisual);
-		Matrix3D toViewport = TryWorldToViewportTransform(viewportVisual, out var success);
+		Matrix4x4 accumulatedTransform = Matrix4x4.Identity;
+		DependencyObject current = visual;
 
-		if (!success)
+		while (current != null)
+		{
+			if (current is ModelVisual3D modelVisual)
+			{
+				var transform = modelVisual.Transform;
+				if (transform != null)
+				{
+					var matrix = transform.Value.ToMatrix4x4();
+					if (!matrix.IsIdentity)
+					{
+						accumulatedTransform *= matrix;
+					}
+				}
+			}
+			else if (current is Viewport3DVisual viewport)
+			{
+				modelToWorld = accumulatedTransform;
+				return viewport;
+			}
+
+			current = VisualTreeHelper.GetParent(current);
+		}
+
+		modelToWorld = Matrix4x4.Identity;
+		return null;
+	}
+
+	/// <summary>
+	/// Finds the nearest <see cref="Viewport3DVisual"/> ancestor of the given visual and
+	/// calculates the transform from the visual to the viewport's coordinate space.
+	/// </summary>
+	/// <remarks>
+	/// This variant of the method returns a direct child of the found viewport, which allows
+	/// the caller to cache the viewport and calculate the model-to-world transform later.
+	/// If you don't need to cache, use <see cref="FindViewport(DependencyObject, out Matrix4x4)"/> instead.
+	/// </remarks>
+	/// <param name="visual">
+	/// The visual to start searching from.
+	/// </param>
+	/// <param name="root3D">
+	/// The direct child of the found <see cref="Viewport3DVisual"/>, or null if none is found.
+	/// </param>
+	/// <returns>
+	/// The nearest <see cref="Viewport3DVisual"/> ancestor, or null if none is found.
+	/// </returns>
+	public static Viewport3DVisual? FindViewport(Visual3D visual, out Visual3D? root3D)
+	{
+		root3D = null;
+		DependencyObject current = visual;
+		Visual3D? lastV3D = visual;
+
+		while (current != null)
+		{
+			if (current is Viewport3DVisual viewport)
+			{
+				root3D = lastV3D; // This is the child of the Viewport
+				return viewport;
+			}
+
+			if (current is Visual3D v3d)
+				lastV3D = v3d;
+
+			current = VisualTreeHelper.GetParent(current);
+		}
+		return null;
+	}
+
+	/// <summary>
+	/// Attempts to calculate the full transformation matrix
+	/// from a 3D Visual object's local space to the 2D Screen/Viewport space.
+	/// </summary>
+	/// <remarks>
+	/// This is a convenience method that encapsulates: 
+	/// Model-to-World → World-to-Camera (View) → Camera-to-NDC (Projection) → NDC-to-Screen.
+	/// </remarks>
+	/// <param name="visual">The source 3D visual.</param>
+	/// <param name="screenMatrix">The resulting transformation matrix.</param>
+	/// <returns>
+	/// True if the transformation matrix was successfully calculated; otherwise, false.
+	/// </returns>
+	public static bool TryTransformVisualToViewport(DependencyObject visual, out Matrix3D screenMatrix)
+	{
+		var success = TryTransformVisualToViewport(visual, out Matrix4x4 result);
+		screenMatrix = success ? result.ToMatrix3D() : ZeroMatrix;
+		return success;
+	}
+
+	/// <summary>
+	/// Attempts to calculate the full transformation matrix
+	/// from a 3D Visual object's local space to the 2D Screen/Viewport space.
+	/// </summary>
+	/// <remarks>
+	/// This is a convenience method that encapsulates: 
+	/// Model-to-World → World-to-Camera (View) → Camera-to-NDC (Projection) → NDC-to-Screen.
+	/// </remarks>
+	/// <param name="visual">The source 3D visual.</param>
+	/// <param name="screenMatrix">The resulting transformation matrix.</param>
+	/// <param name="viewport">
+	/// The ancestor viewport found during the search, if any.
+	/// </param>
+	/// <returns>
+	/// True if the transformation matrix was successfully calculated; otherwise, false.
+	/// </returns>
+	public static bool TryTransformVisualToViewport(DependencyObject visual, out Matrix3D screenMatrix, out Viewport3DVisual? viewport)
+	{
+		var success = TryTransformVisualToViewport(visual, out Matrix4x4 result, out viewport);
+		screenMatrix = success ? result.ToMatrix3D() : ZeroMatrix;
+		return success;
+	}
+
+	/// <summary>
+	/// Attempts to calculate the full transformation matrix
+	/// from a 3D Visual object's local space to the 2D Screen/Viewport space.
+	/// </summary>
+	/// <remarks>
+	/// This is a convenience method that encapsulates: 
+	/// Model-to-World → World-to-Camera (View) → Camera-to-NDC (Projection) → NDC-to-Screen.
+	/// </remarks>
+	/// <param name="visual">The source 3D visual.</param>
+	/// <param name="screenMatrix">The resulting transformation matrix.</param>
+	/// <returns>
+	/// True if the transformation matrix was successfully calculated; otherwise, false.
+	/// </returns>
+	public static bool TryTransformVisualToViewport(DependencyObject visual, out Matrix4x4 screenMatrix)
+	{
+		var viewport = FindViewport(visual, out Matrix4x4 modelToWorld);
+		if (viewport == null)
+		{
+			screenMatrix = default;
 			return false;
+		}
 
-		toWorld.Append(toViewport);
-		matrix = toWorld;
+		return TryTransformVisualToViewport(viewport, modelToWorld, out screenMatrix);
+	}
+
+	/// <summary>
+	/// Attempts to calculate the full transformation matrix
+	/// from a 3D Visual object's local space to the 2D Screen/Viewport space.
+	/// </summary>
+	/// <remarks>
+	/// This is a convenience method that encapsulates: 
+	/// Model-to-World → World-to-Camera (View) → Camera-to-NDC (Projection) → NDC-to-Screen.
+	/// </remarks>
+	/// <param name="visual">The source 3D visual.</param>
+	/// <param name="screenMatrix">The resulting transformation matrix.</param>
+	/// <param name="viewport">
+	/// The ancestor viewport found during the search, if any.
+	/// </param>
+	/// <returns>
+	/// True if the transformation matrix was successfully calculated; otherwise, false.
+	/// </returns>
+	public static bool TryTransformVisualToViewport(DependencyObject visual, out Matrix4x4 screenMatrix, out Viewport3DVisual? viewport)
+	{
+		viewport = FindViewport(visual, out Matrix4x4 modelToWorld);
+		if (viewport == null)
+		{
+			screenMatrix = default;
+			return false;
+		}
+
+		return TryTransformVisualToViewport(viewport, modelToWorld, out screenMatrix);
+	}
+
+	/// <summary>
+	/// Calculates the full transformation matrix from the given model-to-world matrix
+	/// to the 2D Screen/Viewport space of the specified viewport.
+	/// </summary>
+	/// <param name="viewport">
+	/// The viewport to calculate the matrix for.
+	/// </param>
+	/// <param name="modelToWorld">
+	/// The model-to-world transformation matrix.
+	/// </param>
+	/// <param name="modelToScreen">
+	/// The output model-to-screen transformation matrix, including view, projection, and viewport transforms.
+	/// </param>
+	/// <returns>
+	/// True if the transformation matrix was successfully calculated; otherwise, false.
+	/// </returns>
+	public static bool TryTransformVisualToViewport(Viewport3DVisual viewport, Matrix4x4 modelToWorld, out Matrix4x4 modelToScreen)
+	{
+		if (!TryGetViewProjectionViewportMatrix(viewport, out Matrix4x4 viewProj))
+		{
+			modelToScreen = default;
+			return false;
+		}
+
+		modelToScreen = modelToWorld * viewProj;
 		return true;
 	}
 
 	/// <summary>
-	/// Computes the transform from world space to the Viewport3DVisual's inner 2D space.
-	/// This method can fail if Camera.Transform is non-invertable in which case the camera
-	/// clip planes will be coincident and nothing will render. In this case success will be false.
+	/// Calculates the combined View-Projection-Screen matrix for the given viewport.
 	/// </summary>
-	/// <param name="visual">The Viewport3DVisual to compute the transformation for.</param>
-	/// <param name="success">True if the transformation was successful; otherwise, false.</param>
-	/// <returns>The transformation matrix from world space to the viewport's inner 2D space.</returns>
-	public static Matrix3D TryWorldToViewportTransform(Viewport3DVisual? visual, out bool success)
+	/// <param name="viewport">
+	/// The viewport to calculate the matrix for.
+	/// </param>
+	/// <param name="result">
+	/// The resulting combined matrix.
+	/// </param>
+	/// <returns>
+	/// True if the transformation matrix was successfully calculated; otherwise, false.
+	/// </returns>
+	public static bool TryGetViewProjectionViewportMatrix(Viewport3DVisual viewport, out Matrix4x4 result)
 	{
-		success = false;
-		Matrix3D result = TryWorldToCameraTransform(visual, out success);
-
-		if (visual != null && success)
-		{
-			result.Append(GetProjectionMatrix(visual.Camera, GetAspectRatio(visual.Viewport.Size)));
-			result.Append(GetHomogeneousToViewportTransform(visual.Viewport));
-			success = true;
-		}
-
-		return result;
-	}
-
-	/// <summary>
-	/// Computes the transform from world space to camera space.
-	/// This method can fail if Camera.Transform is non-invertable in which case the camera
-	/// clip planes will be coincident and nothing will render. In this case success will be false.
-	/// </summary>
-	/// <param name="visual">The Viewport3DVisual to compute the transformation for.</param>
-	/// <param name="success">True if the transformation was successful; otherwise, false.</param>
-	/// <returns>The transformation matrix from world space to camera space.</returns>
-	public static Matrix3D TryWorldToCameraTransform(Viewport3DVisual? visual, out bool success)
-	{
-		success = false;
-
-		if (visual == null)
-			return ZeroMatrix;
-
-		Matrix3D result = Matrix3D.Identity;
-		Camera camera = visual.Camera;
-
-		if (camera == null || visual.Viewport == Rect.Empty)
-			return ZeroMatrix;
-
-		Transform3D cameraTransform = camera.Transform;
-
-		if (cameraTransform != null)
-		{
-			Matrix3D m = cameraTransform.Value;
-
-			if (!m.HasInverse)
-			{
-				return ZeroMatrix;
-			}
-
-			m.Invert();
-			result.Append(m);
-		}
-
-		result.Append(GetViewMatrix(camera));
-
-		success = true;
-		return result;
-	}
-
-	/// <summary>
-	/// Computes the transform from the inner space of the given Visual3D to the 2D space of the Viewport3DVisual which
-	/// contains it. The result will contain the transform of the given visual. This method can fail if Camera.Transform
-	/// is non-invertable in which case the camera clip planes will be coincident and nothing will render.
-	/// In this case success will be false.
-	/// </summary>
-	/// <param name="visual">The visual to compute the transformation for.</param>
-	/// <param name="viewport">The Viewport3DVisual that contains the visual.</param>
-	/// <param name="success">True if the transformation was successful; otherwise, false.</param>
-	/// <returns>The transformation matrix from the visual's inner space to the viewport's 2D space.</returns>
-	public static Matrix3D TryTransformTo2DAncestor(DependencyObject visual, out Viewport3DVisual? viewport, out bool success)
-	{
-		Matrix3D to2D = GetWorldTransformationMatrix(visual, out viewport);
-
 		if (viewport == null)
 		{
-			success = false;
-			return ZeroMatrix;
+			result = default;
+			return false;
 		}
 
-		Matrix3D toViewport = TryWorldToViewportTransform(viewport, out success);
+		var camera = viewport.Camera;
+		Rect rect = viewport.Viewport;
 
-		if (!success)
-			return ZeroMatrix;
+		// Combine view and camera projection matrices
+		if (!TryGetViewProjectionMatrix(camera, rect.Size, out Matrix4x4 viewProj))
+		{
+			result = Matrix4x4.Identity;
+			return false;
+		}
 
-		to2D.Append(toViewport);
-		return to2D;
-	}
+		// Map normalized device coordinates (-1 to 1) to screen space (0 to Width/Height)
+		Matrix4x4 viewportMat = ConvertNDCToScreenMatrix(rect);
 
-	/// <summary>
-	/// Computes the transform from the inner space of the given Visual3D to the camera coordinate space.
-	/// The result will contain the transform of the given visual. This method can fail if Camera.Transform
-	/// is non-invertable in which case the camera clip planes will be coincident and nothing will render.
-	/// In this case success will be false.
-	/// </summary>
-	/// <param name="visual">The visual to compute the transformation for.</param>
-	/// <param name="viewport">The Viewport3DVisual that contains the visual.</param>
-	/// <param name="success">True if the transformation was successful; otherwise, false.</param>
-	/// <returns>The transformation matrix from the visual's inner space to the camera coordinate space.</returns>
-	public static Matrix3D TryTransformToCameraSpace(DependencyObject visual, out Viewport3DVisual? viewport, out bool success)
-	{
-		Matrix3D toViewSpace = GetWorldTransformationMatrix(visual, out viewport);
-		toViewSpace.Append(TryWorldToCameraTransform(viewport, out success));
-
-		if (!success)
-			return ZeroMatrix;
-
-		return toViewSpace;
+		// Combine transforms: World -> View projection -> Screen
+		result = viewProj * viewportMat;
+		return true;
 	}
 
 	/// <summary>
@@ -253,6 +411,7 @@ public static class MathUtils
 	/// </summary>
 	/// <param name="v">The vector to normalize.</param>
 	/// <returns>'true' if v was normalized.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static bool TryNormalize(ref Vector3D v)
 	{
 		double length = v.Length;
@@ -292,40 +451,127 @@ public static class MathUtils
 	}
 
 	/// <summary>
-	/// Computes the view matrix for a projection camera.
+	/// Converts normalized device coordinates (-1 to 1) to screen space (0 to Width/Height).
 	/// </summary>
-	/// <param name="camera">The projection camera.</param>
-	/// <returns>The view matrix for the camera.</returns>
-	private static Matrix3D GetViewMatrix(ProjectionCamera camera)
+	/// <param name="viewport">
+	/// The viewport rectangle.
+	/// </param>
+	/// <returns>
+	/// A transformation matrix of the screen space.
+	/// </returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static Matrix4x4 ConvertNDCToScreenMatrix(Rect viewport)
 	{
-		Debug.Assert(camera != null, "Caller needs to ensure camera is non-null.");
-
-		// This math is identical to what you find documented for
-		// D3DXMatrixLookAtRH with the exception that WPF uses a
-		// LookDirection vector rather than a LookAt point.
-		Vector3D zAxis = -camera.LookDirection;
-		zAxis.Normalize();
-
-		Vector3D xAxis = Vector3D.CrossProduct(camera.UpDirection, zAxis);
-		xAxis.Normalize();
-
-		Vector3D yAxis = Vector3D.CrossProduct(zAxis, xAxis);
-
-		Vector3D position = (Vector3D)camera.Position;
-		double offsetX = -Vector3D.DotProduct(xAxis, position);
-		double offsetY = -Vector3D.DotProduct(yAxis, position);
-		double offsetZ = -Vector3D.DotProduct(zAxis, position);
-
-		return new Matrix3D(xAxis.X, yAxis.X, zAxis.X, 0, xAxis.Y, yAxis.Y, zAxis.Y, 0, xAxis.Z, yAxis.Z, zAxis.Z, 0, offsetX, offsetY, offsetZ, 1);
+		float scaleX = (float)(viewport.Width / 2);
+		float scaleY = (float)(viewport.Height / 2);
+		float offsetX = (float)(viewport.X + scaleX);
+		float offsetY = (float)(viewport.Y + scaleY);
+		return new Matrix4x4(scaleX, 0, 0, 0, 0, -scaleY, 0, 0, 0, 0, 1, 0, offsetX, offsetY, 0, 1);
 	}
 
 	/// <summary>
-	/// Computes the projection matrix for an orthographic camera.
+	/// Converts normalized device coordinates (-1 to 1) to screen space (0 to Width/Height).
 	/// </summary>
-	/// <param name="camera">The orthographic camera.</param>
-	/// <param name="aspectRatio">The aspect ratio of the viewport.</param>
-	/// <returns>The projection matrix for the camera.</returns>
-	private static Matrix3D GetProjectionMatrix(OrthographicCamera camera, double aspectRatio)
+	/// <param name="viewport">
+	/// The viewport rectangle.
+	/// </param>
+	/// <returns>
+	/// A transformation matrix of the screen space.
+	/// </returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static Matrix3D ConvertNDCToScreenMatrix3D(Rect viewport)
+	{
+		double scaleX = viewport.Width / 2;
+		double scaleY = viewport.Height / 2;
+		double offsetX = viewport.X + scaleX;
+		double offsetY = viewport.Y + scaleY;
+		return new Matrix3D(scaleX, 0, 0, 0, 0, -scaleY, 0, 0, 0, 0, 1, 0, offsetX, offsetY, 0, 1);
+	}
+
+	private static bool TryGetViewProjectionMatrix(Camera camera, Size viewportSize, out Matrix4x4 result)
+	{
+		if (viewportSize.Width <= 0 || viewportSize.Height <= 0)
+		{
+			result = Matrix4x4.Identity;
+			return false;
+		}
+
+		// Apply camera transform to compute view matrix
+		if (camera is not ProjectionCamera projCam ||
+			!TryGetViewMatrixInternal(projCam, applyTransform: true, out Matrix4x4 view))
+		{
+			result = Matrix4x4.Identity;
+			return false;
+		}
+
+		// Calculate projection matrix
+		float aspectRatio = (float)(viewportSize.Width / viewportSize.Height);
+		if (!TryGetProjectionMatrixInternal(camera, aspectRatio, out Matrix4x4 proj))
+		{
+			result = default;
+			return false;
+		}
+
+		result = view * proj;
+		return true;
+	}
+
+	private static bool TryGetViewMatrixInternal(ProjectionCamera camera, bool applyTransform, out Matrix4x4 viewMatrix)
+	{
+		Vector3 pos = camera.Position.FromMedia3DPoint();
+		Vector3 lookDir = camera.LookDirection.FromMedia3DVector();
+		Vector3 upDir = camera.UpDirection.FromMedia3DVector();
+
+		if (applyTransform && camera.Transform is Transform3D transform && !transform.Value.IsIdentity)
+		{
+			Matrix4x4 camM = transform.Value.ToMatrix4x4();
+			pos = Vector3.Transform(pos, camM);
+			lookDir = Vector3.TransformNormal(lookDir, camM);
+			upDir = Vector3.TransformNormal(upDir, camM);
+		}
+
+		float lookLenSq = lookDir.LengthSquared();
+		if (lookLenSq < LOOK_DIR_EPSILON)
+		{
+			viewMatrix = default;
+			return false;
+		}
+
+		Vector3 nLook = lookDir / MathF.Sqrt(lookLenSq);
+		Vector3 nUp = Vector3.Normalize(upDir);
+		float dot = MathF.Abs(Vector3.Dot(nLook, nUp));
+
+		// Parallel vector correction
+		if (dot > PARALLEL_VEC_DOT_THRESHOLD)
+		{
+			float absX = MathF.Abs(nLook.X);
+			float absY = MathF.Abs(nLook.Y);
+			float absZ = MathF.Abs(nLook.Z);
+
+			if (absX <= absY && absX <= absZ) nUp = Vector3.UnitX;
+			else if (absY <= absX && absY <= absZ) nUp = Vector3.UnitY;
+			else nUp = Vector3.UnitZ;
+		}
+
+		// D3DXMatrixLookAtRH equivalent (WPF uses RH)
+		// WPF LookDirection is Vector, CreateLookAt expects Target Point (Pos + Look)
+		viewMatrix = Matrix4x4.CreateLookAt(pos, pos + nLook, nUp);
+		return true;
+	}
+
+	private static bool TryGetProjectionMatrixInternal(Camera camera, float aspectRatio, out Matrix4x4 projMatrix)
+	{
+		projMatrix = camera switch
+		{
+			PerspectiveCamera persCam => GetProjectionMatrixInternal(persCam, aspectRatio),
+			OrthographicCamera ortho => GetProjectionMatrixInternal(ortho, aspectRatio),
+			_ => default
+		};
+
+		return camera is PerspectiveCamera or OrthographicCamera;
+	}
+
+	private static Matrix4x4 GetProjectionMatrixInternal(OrthographicCamera camera, double aspectRatio)
 	{
 		Debug.Assert(camera != null, "Caller needs to ensure camera is non-null.");
 
@@ -333,24 +579,17 @@ public static class MathUtils
 		// D3DXMatrixOrthoRH with the exception that in WPF only
 		// the camera's width is specified.  Height is calculated
 		// from width and the aspect ratio.
-		double w = camera.Width;
-		double h = w / aspectRatio;
-		double zn = camera.NearPlaneDistance;
-		double zf = camera.FarPlaneDistance;
+		float w = MathF.Max((float)camera.Width, MIN_ORTHO_SIZE);
+		float h = (float)(w / aspectRatio);
+		float zn = (float)camera.NearPlaneDistance;
+		float zf = (float)camera.FarPlaneDistance;
+		float m33 = 1.0f / (zn - zf);
+		float m43 = zn * m33;
 
-		double m33 = 1 / (zn - zf);
-		double m43 = zn * m33;
-
-		return new Matrix3D(2 / w, 0, 0, 0, 0, 2 / h, 0, 0, 0, 0, m33, 0, 0, 0, m43, 1);
+		return new Matrix4x4(2.0f / w, 0, 0, 0, 0, 2.0f / h, 0, 0, 0, 0, m33, 0, 0, 0, m43, 1);
 	}
 
-	/// <summary>
-	/// Computes the projection matrix for a perspective camera.
-	/// </summary>
-	/// <param name="camera">The perspective camera.</param>
-	/// <param name="aspectRatio">The aspect ratio of the viewport.</param>
-	/// <returns>The projection matrix for the camera.</returns>
-	private static Matrix3D GetProjectionMatrix(PerspectiveCamera camera, double aspectRatio)
+	private static Matrix4x4 GetProjectionMatrixInternal(PerspectiveCamera camera, double aspectRatio)
 	{
 		Debug.Assert(camera != null, "Caller needs to ensure camera is non-null.");
 
@@ -358,75 +597,16 @@ public static class MathUtils
 		// D3DXMatrixPerspectiveFovRH with the exception that in
 		// WPF the camera's horizontal rather the vertical
 		// field-of-view is specified.
-		double hFoV = DegreesToRadians(camera.FieldOfView);
-		double zn = camera.NearPlaneDistance;
-		double zf = camera.FarPlaneDistance;
+		float hFoV = Math.Clamp((float)camera.FieldOfView, MIN_FOV, MAX_FOV);
+		float hFovRad = DegreesToRadians(hFoV);
+		float zn = (float)camera.NearPlaneDistance;
+		float zf = (float)camera.FarPlaneDistance;
 
-		double xScale = 1 / Math.Tan(hFoV / 2);
-		double yScale = aspectRatio * xScale;
-		double m33 = (zf == double.PositiveInfinity) ? -1 : (zf / (zn - zf));
-		double m43 = zn * m33;
+		float xScale = 1.0f / MathF.Tan(hFovRad * 0.5f);
+		float yScale = (float)aspectRatio * xScale;
+		float m33 = (zf == float.PositiveInfinity) ? -1.0f : (zf / (zn - zf));
+		float m43 = zn * m33;
 
-		return new Matrix3D(xScale, 0, 0, 0, 0, yScale, 0, 0, 0, 0, m33, -1, 0, 0, m43, 0);
-	}
-
-	/// <summary>
-	/// Computes the transformation matrix from homogeneous coordinates to viewport coordinates.
-	/// </summary>
-	/// <param name="viewport">The viewport rectangle.</param>
-	/// <returns>The transformation matrix from homogeneous coordinates to viewport coordinates.</returns>
-	private static Matrix3D GetHomogeneousToViewportTransform(Rect viewport)
-	{
-		double scaleX = viewport.Width / 2;
-		double scaleY = viewport.Height / 2;
-		double offsetX = viewport.X + scaleX;
-		double offsetY = viewport.Y + scaleY;
-
-		return new Matrix3D(scaleX, 0, 0, 0, 0, -scaleY, 0, 0, 0, 0, 1, 0, offsetX, offsetY, 0, 1);
-	}
-
-	/// <summary>
-	/// Gets the object space to world space transformation for the given DependencyObject.
-	/// </summary>
-	/// <param name="visual">The visual whose world space transform should be found.</param>
-	/// <param name="viewport">The Viewport3DVisual the Visual is contained within.</param>
-	/// <returns>The world space transformation.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static Matrix3D GetWorldTransformationMatrix(DependencyObject visual, out Viewport3DVisual? viewport)
-	{
-		Matrix3D worldTransform = Matrix3D.Identity;
-		viewport = null;
-
-		if (visual is not Visual3D)
-		{
-			throw new ArgumentException("Must be of type Visual3D.", nameof(visual));
-		}
-
-		while (visual is ModelVisual3D modelVisual)
-		{
-			Transform3D? transform = modelVisual.Transform;
-			if (transform != null)
-			{
-				worldTransform.Append(transform.Value);
-			}
-
-			visual = VisualTreeHelper.GetParent(visual);
-		}
-
-		viewport = visual as Viewport3DVisual;
-
-		if (viewport == null)
-		{
-			if (visual != null)
-			{
-				// In WPF 3D v1 the only possible configuration is a chain of
-				// ModelVisual3Ds leading up to a Viewport3DVisual.
-				throw new ApplicationException($"Unsupported type: '{visual.GetType().FullName}'. Expected tree of ModelVisual3Ds leading up to a Viewport3DVisual.");
-			}
-
-			return ZeroMatrix;
-		}
-
-		return worldTransform;
+		return new Matrix4x4(xScale, 0, 0, 0, 0, yScale, 0, 0, 0, 0, m33, -1, 0, 0, m43, 0);
 	}
 }
