@@ -48,7 +48,7 @@
 									
 									<!-- TODO -->
 									<Grid x:Name="IconWrapper" Visibility="Visible" Width="40">
-										<fa:IconBlock Icon="{Binding Icon}" Height="16" Width="16"/>
+										<fa:IconBlock FontFamily="/FontAwesome.Sharp;component/fonts/#Font Awesome 6 Free Solid" Icon="{Binding Icon}" Height="16" Width="16"/>
 									</Grid>
 									
 									<Grid x:Name="GlyphWrapper" Visibility="Collapsed" Width="40">
