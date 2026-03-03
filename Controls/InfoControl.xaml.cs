@@ -3,8 +3,9 @@
 
 namespace XivToolsWpf.Controls;
 
-using System.Windows.Controls;
 using PropertyChanged;
+using System.Windows.Controls;
+using XivToolsWpf.DependencyProperties;
 
 /// <summary>
 /// Interaction logic for InfoControl.xaml.
@@ -12,19 +13,24 @@ using PropertyChanged;
 [AddINotifyPropertyChangedInterface]
 public partial class InfoControl : UserControl
 {
+	public static readonly IBind<string?> KeyDp = Binder.Register<string?, InfoControl>(nameof(Key), OnKeyChanged, BindMode.OneWay);
+
 	public InfoControl()
 	{
 		this.InitializeComponent();
 
 		this.ContentArea.DataContext = this;
-
 		this.IsError = false;
 	}
 
 	public string? Key
 	{
-		get => this.TextBlock.Key;
-		set => this.TextBlock.Key = value;
+		get => KeyDp.Get(this);
+		set
+		{
+			KeyDp.Set(this, value);
+			this.TextBlock.Key = value;
+		}
 	}
 
 	public string? Text
@@ -33,9 +39,10 @@ public partial class InfoControl : UserControl
 		set => this.TextBlock.Text = value;
 	}
 
-	public bool IsError
+	public bool IsError { get; set; }
+
+	private static void OnKeyChanged(InfoControl sender, string? newValue)
 	{
-		get;
-		set;
+		sender.TextBlock.Key = newValue;
 	}
 }

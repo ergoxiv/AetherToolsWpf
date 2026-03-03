@@ -13,7 +13,7 @@ using XivToolsWpf.DependencyProperties;
 /// </summary>
 public partial class TextBlock : System.Windows.Controls.TextBlock
 {
-	public static readonly IBind<string> KeyDp = Binder.Register<string, TextBlock>(nameof(Key), OnKeyChanged, BindMode.OneWay);
+	public static readonly IBind<string?> KeyDp = Binder.Register<string?, TextBlock>(nameof(Key), OnKeyChanged, BindMode.OneWay);
 	public static readonly IBind<string?> ValueDp = Binder.Register<string?, TextBlock>(nameof(Value), OnValueChanged, BindMode.OneWay);
 	public static readonly IBind<bool> AllLanguagesDp = Binder.Register<bool, TextBlock>(nameof(AllLanguages), BindMode.OneWay);
 	private static ILocaleProvider? cachedlocaleProvider;
@@ -26,7 +26,11 @@ public partial class TextBlock : System.Windows.Controls.TextBlock
 		this.LoadString();
 	}
 
-	public string? Key { get; set; }
+	public string? Key
+	{
+		get => KeyDp.Get(this);
+		set => KeyDp.Set(this, value);
+	}
 
 	public string? Value
 	{
@@ -59,9 +63,8 @@ public partial class TextBlock : System.Windows.Controls.TextBlock
 		}
 	}
 
-	public static void OnKeyChanged(TextBlock sender, string val)
+	public static void OnKeyChanged(TextBlock sender, string? val)
 	{
-		sender.Key = val;
 		sender.LoadString();
 	}
 
