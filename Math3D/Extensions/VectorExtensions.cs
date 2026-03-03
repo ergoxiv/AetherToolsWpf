@@ -22,9 +22,9 @@ public static class VectorExtensions
 	/// </returns>
 	public static bool IsApproximately(this Vector3 lhs, Vector3 rhs, float errorMargin = 0.001f)
 	{
-		return IsApproximately(lhs.X, rhs.X, errorMargin)
-			&& IsApproximately(lhs.Y, rhs.Y, errorMargin)
-			&& IsApproximately(lhs.Z, rhs.Z, errorMargin);
+		return lhs.X.IsApproximately(rhs.X, errorMargin)
+			&& lhs.Y.IsApproximately(rhs.Y, errorMargin)
+			&& lhs.Z.IsApproximately(rhs.Z, errorMargin);
 	}
 
 	/// <summary>
@@ -120,7 +120,7 @@ public static class VectorExtensions
 	/// </summary>
 	/// <param name="self">The Media3D Vector3D to be converted.</param>
 	/// <returns>A new System.Numerics Vector3 with the same components as the Media3D Vector3D.</returns>
-	public static Vector3 FromMedia3DQuaternion(this System.Windows.Media.Media3D.Vector3D self)
+	public static Vector3 FromMedia3DVector(this System.Windows.Media.Media3D.Vector3D self)
 	{
 		return new Vector3((float)self.X, (float)self.Y, (float)self.Z);
 	}
@@ -217,16 +217,6 @@ public static class VectorExtensions
 			angle += 360;
 		return angle;
 	}
-
-	/// <summary>
-	/// Determines whether two floating-point numbers are approximately equal within a specified error margin.
-	/// </summary>
-	/// <param name="a">The first floating-point number.</param>
-	/// <param name="b">The second floating-point number.</param>
-	/// <param name="errorMargin">The acceptable error margin for the comparison.</param>
-	/// <returns>True if the absolute difference between the two numbers is less than the error margin; otherwise, false.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static bool IsApproximately(float a, float b, float errorMargin) => MathF.Abs(a - b) < errorMargin;
 
 	/// <summary>
 	/// Determines whether a nullable float is valid (i.e., not null, not infinity, and not NaN).

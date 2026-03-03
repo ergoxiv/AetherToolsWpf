@@ -4,14 +4,19 @@
 namespace XivToolsWpf.Math3D;
 
 using System;
+using System.Buffers;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using XivToolsWpf.Math3D.Extensions;
 
 /// <summary>Represents a Media3D line.</summary>
 public class Line : ModelVisual3D, IDisposable
 {
+	private const float APPROX_EQUALITY_EPSILON = 1e-6f;
+
 	/// <summary>Identifies the <see cref="Color"/> dependency property.</summary>
 	public static readonly DependencyProperty ColorProperty = DependencyProperty.Register(nameof(Color), typeof(Color), typeof(Line), new PropertyMetadata(Colors.White, OnColorChanged));
 
@@ -24,8 +29,10 @@ public class Line : ModelVisual3D, IDisposable
 	private readonly GeometryModel3D model;
 	private readonly MeshGeometry3D mesh;
 
-	private Matrix3D visualToScreen;
-	private Matrix3D screenToVisual;
+	private Matrix4x4 visualToScreen;
+	private Matrix4x4 screenToVisual;
+	private Viewport3DVisual? cachedViewport;
+	private Visual3D? cachedRoot3D;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="Line"/> class.
@@ -39,8 +46,11 @@ public class Line : ModelVisual3D, IDisposable
 		this.Content = this.model;
 		this.Points = [];
 
-		CompositionTarget.Rendering += this.OnRender;
+		LineManager.Instance.Value.Register(this);
 	}
+
+	/// <summary>Gets a value indicating whether the element is currently visible.</summary>
+	public bool IsVisible { get; private set; } = true;
 
 	/// <summary>Gets or sets the color of the line.</summary>
 	public Color Color
@@ -66,11 +76,13 @@ public class Line : ModelVisual3D, IDisposable
 	/// <summary>Releases all resources used by the <see cref="Line"/> class.</summary>
 	public void Dispose()
 	{
-		CompositionTarget.Rendering -= this.OnRender;
+		LineManager.Instance.Value.Unregister(this);
 
 		this.Points.Clear();
 		this.Children.Clear();
 		this.Content = null;
+		this.cachedViewport = null;
+		this.cachedRoot3D = null;
 
 		GC.SuppressFinalize(this);
 	}
@@ -101,28 +113,100 @@ public class Line : ModelVisual3D, IDisposable
 	/// <returns>The nearest point on the line, or null if no point is found.</returns>
 	public Point3D? NearestPoint2D(Point3D cameraPoint)
 	{
-		double closest = double.MaxValue;
-		Point3D? closestPoint = null;
-
-		if (!MathUtils.ToViewportTransform(this, out Matrix3D matrix))
+		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0)
 			return null;
 
-		var transform = new MatrixTransform3D(matrix);
+		var viewport = this.GetOrFindViewport();
+		if (viewport == null)
+			return null;
+
+		Matrix4x4? modelToWorld = this.TryGetModelToWorldMatrix();
+		if (modelToWorld == null)
+			return null;
+
+		if (!MathUtils.TryTransformVisualToViewport(viewport, (Matrix4x4)modelToWorld, out Matrix4x4 matrix))
+			return null;
+
+		float closest = float.MaxValue;
+		Point3D? closestPoint = null;
 
 		foreach (Point3D point in this.Points)
 		{
-			Point3D cameraSpacePoint = transform.Transform(point);
-			cameraSpacePoint.Z *= 100;
+			Vector4 transformed4 = Vector4.Transform(point.FromMedia3DPoint(), matrix);
+			var transformed = new Vector3(
+				transformed4.X / transformed4.W,
+				transformed4.Y / transformed4.W,
+				transformed4.Z / transformed4.W);
 
-			Vector3D dir = cameraPoint - cameraSpacePoint;
-			if (dir.Length < closest)
+			transformed.Z *= 100f;
+
+			float dirLength = Vector3.Distance(cameraPoint.FromMedia3DPoint(), transformed);
+			if (dirLength < closest)
 			{
-				closest = dir.Length;
+				closest = dirLength;
 				closestPoint = point;
 			}
 		}
 
 		return closestPoint;
+	}
+
+	/// <summary>
+	/// Gets or finds the viewport that contains this line.
+	/// </summary>
+	/// <returns>
+	/// The viewport that contains this line, or null if none is found.
+	/// </returns>
+	/// <remarks>
+	/// If available, this method returns a cached viewport reference.
+	/// </remarks>
+	public Viewport3DVisual? GetOrFindViewport()
+	{
+		if (this.cachedViewport != null)
+			return this.cachedViewport;
+
+		this.cachedViewport = MathUtils.FindViewport(this, out this.cachedRoot3D);
+		return this.cachedViewport;
+	}
+
+	/// <summary>
+	/// Updates the transforms for the line.
+	/// </summary>
+	/// <param name="viewProjScreen">
+	/// The view-projection-screen matrix.
+	/// </param>
+	/// <remarks>
+	/// This method is intended to be called by the <see cref="LineManager"/> during rendering.
+	/// </remarks>
+	public void UpdateGeometry(in Matrix4x4 viewProjScreen)
+	{
+		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0 || this.cachedRoot3D == null)
+			return;
+
+		Matrix4x4? modelToWorld = this.TryGetModelToWorldMatrix();
+		if (modelToWorld == null)
+			return;
+
+		Matrix4x4 newV2S = (Matrix4x4)modelToWorld * viewProjScreen;
+		if (newV2S.IsApproximately(this.visualToScreen, APPROX_EQUALITY_EPSILON))
+			return;
+
+		if (!Matrix4x4.Invert(newV2S, out Matrix4x4 newS2V))
+			return;
+
+		this.visualToScreen = newV2S;
+		this.screenToVisual = newS2V;
+
+		this.RebuildGeometry();
+	}
+
+	/// <inheritdoc/>
+	protected override void OnVisualParentChanged(DependencyObject? oldParent)
+	{
+		base.OnVisualParentChanged(oldParent);
+		this.GeometryDirty();
+
+		this.IsVisible = VisualTreeHelper.GetParent(this) != null;
 	}
 
 	/// <summary>
@@ -156,6 +240,33 @@ public class Line : ModelVisual3D, IDisposable
 	}
 
 	/// <summary>
+	/// Widens a point in 4D space by a given delta in screen space.
+	/// </summary>
+	/// <param name="pIn4">
+	/// The input point in 4D space.
+	/// </param>
+	/// <param name="delta">
+	/// The delta to apply in screen space.
+	/// </param>
+	/// <param name="s2v">
+	/// The screen-to-visual transformation matrix.
+	/// </param>
+	/// <result>
+	/// The widened point in 3D space.
+	/// </result>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static Point3D Widen(Vector4 pIn4, Vector2 delta, in Matrix4x4 s2v)
+	{
+		// Apply delta scaled by W
+		pIn4.X += delta.X * pIn4.W;
+		pIn4.Y += delta.Y * pIn4.W;
+
+		// Un-project back to visual space
+		Vector4 pOut4 = Vector4.Transform(pIn4, s2v);
+		return new Point3D(pOut4.X / pOut4.W, pOut4.Y / pOut4.W, pOut4.Z / pOut4.W);
+	}
+
+	/// <summary>
 	/// Sets the color of the line.
 	/// </summary>
 	/// <param name="color">The color to set.</param>
@@ -171,143 +282,97 @@ public class Line : ModelVisual3D, IDisposable
 	}
 
 	/// <summary>
-	/// Handles the rendering event to update the line geometry.
-	/// </summary>
-	/// <param name="sender">The object that raised the event.</param>
-	/// <param name="e">The event data.</param>
-	private void OnRender(object? sender, EventArgs e)
-	{
-		if (this.Points.Count == 0 && this.mesh.Positions.Count == 0)
-			return;
-
-		if (this.UpdateTransforms())
-		{
-			this.RebuildGeometry();
-		}
-	}
-
-	/// <summary>
 	/// Marks the geometry as dirty, forcing a rebuild on the next render.
 	/// </summary>
 	private void GeometryDirty()
 	{
 		// Force next call to UpdateTransforms() to return true.
-		this.visualToScreen = MathUtils.ZeroMatrix;
+		this.cachedViewport = null;
+		this.cachedRoot3D = null;
+		this.visualToScreen = MathUtils.ZeroMatrix4x4;
 	}
 
 	/// <summary>Rebuilds the geometry of the line.</summary>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void RebuildGeometry()
 	{
-		double halfThickness = this.Thickness / 2.0;
 		var points = this.Points;
-		int numLines = points.Count / 2;
+		int pointCount = points.Count;
+		if (pointCount < 2)
+			return;
 
-		var positions = new Point3DCollection(numLines * 4);
-		var indices = new Int32Collection(points.Count * 3);
+		int numLines = pointCount / 2;
+		int numVertices = numLines * 4;
+		int numIndices = numLines * 6;
 
-		for (int i = 0; i < numLines; i++)
+		Point3D[] vertexBuffer = ArrayPool<Point3D>.Shared.Rent(numVertices);
+		var indices = new Int32Collection(numIndices);
+
+		float halfThickness = (float)this.Thickness / 2.0f;
+		Matrix4x4 v2s = this.visualToScreen;
+		Matrix4x4 s2v = this.screenToVisual;
+
+		try
 		{
-			int startIndex = i * 2;
+			for (int i = 0; i < numLines; i++)
+			{
+				int ptIdx = i * 2;
+				int vBase = i * 4;
 
-			Point3D startPoint = points[startIndex];
-			Point3D endPoint = points[startIndex + 1];
+				Vector3 startP = points[ptIdx].FromMedia3DPoint();
+				Vector3 endP = points[ptIdx + 1].FromMedia3DPoint();
 
-			this.AddSegment(positions, startPoint, endPoint, halfThickness);
+				// Transform to homogeneous clip space
+				Vector4 startClip = Vector4.Transform(startP, v2s);
+				Vector4 endClip = Vector4.Transform(endP, v2s);
 
-			int baseIndex = i * 4;
-			indices.Add(baseIndex + 2);
-			indices.Add(baseIndex + 1);
-			indices.Add(baseIndex + 0);
+				if (startClip.W <= 0f || endClip.W <= 0f)
+					continue;
 
-			indices.Add(baseIndex + 2);
-			indices.Add(baseIndex + 3);
-			indices.Add(baseIndex + 1);
+				// Compute screen-space direction
+				Vector2 sStart = new(startClip.X / startClip.W, startClip.Y / startClip.W);
+				Vector2 sEnd = new(endClip.X / endClip.W, endClip.Y / endClip.W);
+
+				Vector2 lineDir = sEnd - sStart;
+				float len = lineDir.Length();
+
+				Vector2 delta;
+				if (len < APPROX_EQUALITY_EPSILON)
+				{
+					delta = new Vector2(halfThickness, 0);
+				}
+				else
+				{
+					// Perpendicular vector in screen space
+					delta = new Vector2(-lineDir.Y, lineDir.X) * (halfThickness / len);
+				}
+
+				// Widen and invert
+				// We scale the delta by W to keep thickness constant in screen space
+				vertexBuffer[vBase + 0] = Widen(startClip, delta, s2v);
+				vertexBuffer[vBase + 1] = Widen(startClip, -delta, s2v);
+				vertexBuffer[vBase + 2] = Widen(endClip, delta, s2v);
+				vertexBuffer[vBase + 3] = Widen(endClip, -delta, s2v);
+
+				// Indexing
+				indices.Add(vBase + 2);
+				indices.Add(vBase + 1);
+				indices.Add(vBase + 0);
+
+				indices.Add(vBase + 2);
+				indices.Add(vBase + 3);
+				indices.Add(vBase + 1);
+			}
+
+			this.mesh.Positions = [.. vertexBuffer.AsSpan(0, numVertices).ToArray()];
+			this.mesh.Positions.Freeze();
+			this.mesh.TriangleIndices = indices;
+			this.mesh.TriangleIndices.Freeze();
 		}
-
-		positions.Freeze();
-		this.mesh.Positions = positions;
-
-		indices.Freeze();
-		this.mesh.TriangleIndices = indices;
-	}
-
-	/// <summary>Adds a segment to the line geometry.</summary>
-	/// <param name="positions">The collection of positions to add to.</param>
-	/// <param name="startPoint">The start point of the segment.</param>
-	/// <param name="endPoint">The end point of the segment.</param>
-	/// <param name="halfThickness">Half the thickness of the line.</param>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void AddSegment(Point3DCollection positions, Point3D startPoint, Point3D endPoint, double halfThickness)
-	{
-		// NOTE: We want the vector below to be perpendicular post projection so
-		//       we need to compute the line direction in post-projective space.
-		Vector3D lineDirection = (endPoint * this.visualToScreen) - (startPoint * this.visualToScreen);
-		lineDirection.Z = 0;
-		lineDirection.Normalize();
-
-		// NOTE: Implicit Rot(90) during construction to get a perpendicular vector.
-		var delta = new Vector(-lineDirection.Y, lineDirection.X);
-		delta *= halfThickness;
-
-		this.Widen(startPoint, delta, out Point3D pOut1, out Point3D pOut2);
-
-		positions.Add(pOut1);
-		positions.Add(pOut2);
-
-		this.Widen(endPoint, delta, out pOut1, out pOut2);
-
-		positions.Add(pOut1);
-		positions.Add(pOut2);
-	}
-
-	/// <summary>Widens a point by a specified delta.</summary>
-	/// <param name="pIn">The input point.</param>
-	/// <param name="delta">The delta to widen by.</param>
-	/// <param name="pOut1">The first widened point.</param>
-	/// <param name="pOut2">The second widened point.</param>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void Widen(Point3D pIn, Vector delta, out Point3D pOut1, out Point3D pOut2)
-	{
-		Point4D pIn4 = (Point4D)pIn;
-		Point4D pOut41 = pIn4 * this.visualToScreen;
-		Point4D pOut42 = pOut41;
-
-		pOut41.X += delta.X * pOut41.W;
-		pOut41.Y += delta.Y * pOut41.W;
-
-		pOut42.X -= delta.X * pOut42.W;
-		pOut42.Y -= delta.Y * pOut42.W;
-
-		pOut41 *= this.screenToVisual;
-		pOut42 *= this.screenToVisual;
-
-		// NOTE: Z is not modified above, so we use the original Z below.
-		pOut1 = new Point3D(pOut41.X / pOut41.W, pOut41.Y / pOut41.W, pOut41.Z / pOut41.W);
-		pOut2 = new Point3D(pOut42.X / pOut42.W, pOut42.Y / pOut42.W, pOut42.Z / pOut42.W);
-	}
-
-	/// <summary>Updates the transforms for the line.</summary>
-	/// <returns>true if the transforms were updated; otherwise, false.</returns>
-	private bool UpdateTransforms()
-	{
-		Matrix3D visualToScreen = MathUtils.TryTransformTo2DAncestor(this, out Viewport3DVisual? viewport, out bool success);
-
-		if (!success || !visualToScreen.HasInverse)
+		finally
 		{
-			this.mesh.Positions = null;
-			return false;
+			ArrayPool<Point3D>.Shared.Return(vertexBuffer);
 		}
-
-		if (visualToScreen == this.visualToScreen)
-		{
-			return false;
-		}
-
-		this.visualToScreen = this.screenToVisual = visualToScreen;
-		this.screenToVisual.Invert();
-
-		return true;
 	}
 
 	/// <summary>Helper method to create a wireframe representation of a 3D model.</summary>
@@ -394,7 +459,7 @@ public class Line : ModelVisual3D, IDisposable
 						break;
 					}
 
-					this.AddTriangle(positions, i0, i1, i2);
+					this.AddTriangle(ref positions, i0, i1, i2);
 				}
 			}
 			else
@@ -405,7 +470,7 @@ public class Line : ModelVisual3D, IDisposable
 					int i1 = i - 1;
 					int i2 = i;
 
-					this.AddTriangle(positions, i0, i1, i2);
+					this.AddTriangle(ref positions, i0, i1, i2);
 				}
 			}
 		}
@@ -419,7 +484,7 @@ public class Line : ModelVisual3D, IDisposable
 	/// <param name="i1">The second index of the triangle.</param>
 	/// <param name="i2">The third index of the triangle.</param>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void AddTriangle(Point3D[] positions, int i0, int i1, int i2)
+	private void AddTriangle(ref Point3D[] positions, int i0, int i1, int i2)
 	{
 		this.Points.Add(positions[i0]);
 		this.Points.Add(positions[i1]);
@@ -427,5 +492,38 @@ public class Line : ModelVisual3D, IDisposable
 		this.Points.Add(positions[i2]);
 		this.Points.Add(positions[i2]);
 		this.Points.Add(positions[i0]);
+	}
+
+	private Matrix4x4? TryGetModelToWorldMatrix()
+	{
+		if (this.cachedRoot3D == null)
+			return null;
+
+		try
+		{
+			GeneralTransform3D transform = this.TransformToAncestor(this.cachedRoot3D);
+
+			Matrix4x4 modelToWorld;
+			if (transform is Transform3D t3d)
+			{
+				modelToWorld = t3d.Value.ToMatrix4x4();
+			}
+			else
+			{
+				modelToWorld = Matrix4x4.Identity;
+			}
+
+			if (this.cachedRoot3D.Transform != null && !this.cachedRoot3D.Transform.Value.IsIdentity)
+			{
+				modelToWorld *= this.cachedRoot3D.Transform.Value.ToMatrix4x4();
+			}
+
+			return modelToWorld;
+		}
+		catch (InvalidOperationException)
+		{
+			this.cachedViewport = null;
+			return null;
+		}
 	}
 }
