@@ -124,7 +124,7 @@ public partial class NumberBox : UserControl, INotifyPropertyChanged
 
 		set
 		{
-			this.Value = value - this.ValueOffset;
+			double v = value - this.ValueOffset;
 
 			if (!this.UncapTextInput)
 			{
@@ -132,16 +132,18 @@ public partial class NumberBox : UserControl, INotifyPropertyChanged
 				{
 					double range = this.Maximum - this.Minimum;
 
-					while (this.Value > this.Maximum)
-						this.Value -= range;
+					while (v > this.Maximum)
+						v -= range;
 
-					while (this.Value < this.Minimum)
-						this.Value += range;
+					while (v < this.Minimum)
+						v += range;
 				}
 
-				this.Value = Math.Max(this.Minimum, this.Value);
-				this.Value = Math.Min(this.Maximum, this.Value);
+				v = Math.Max(this.Minimum, v);
+				v = Math.Min(this.Maximum, v);
 			}
+
+			this.Value = v;
 		}
 	}
 
